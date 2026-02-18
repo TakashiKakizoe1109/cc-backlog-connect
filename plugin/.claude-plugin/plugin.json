@@ -1,0 +1,18 @@
+{
+  "name": "cc-backlog-connect",
+  "version": "0.1.0",
+  "description": "Sync Backlog issues to local docs for Claude Code context",
+  "author": {
+    "name": "Takashi Kakizoe"
+  },
+  "repository": "https://github.com/TakashiKakizoe1109/cc-backlog-connect",
+  "homepage": "https://github.com/TakashiKakizoe1109/cc-backlog-connect",
+  "license": "MIT",
+  "keywords": [
+    "backlog",
+    "nulab",
+    "issue-sync",
+    "claude-code"
+  ]
+}
+

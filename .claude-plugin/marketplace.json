@@ -1,0 +1,24 @@
+{
+  "name": "cc-backlog-connect",
+  "owner": {
+    "name": "Takashi Kakizoe"
+  },
+  "metadata": {
+    "description": "Plugins by Takashi Kakizoe",
+    "homepage": "https://github.com/TakashiKakizoe1109/cc-backlog-connect"
+  },
+  "plugins": [
+    {
+      "name": "cc-backlog-connect",
+      "version": "0.1.0",
+      "source": "./plugin",
+      "description": "Sync Backlog issues to local docs for Claude Code context",
+      "category": "productivity",
+      "license": "MIT",
+      "tags": ["backlog", "nulab", "issue-sync"],
+      "keywords": ["backlog", "claude-code", "cli", "issue", "sync"],
+      "homepage": "https://github.com/TakashiKakizoe1109/cc-backlog-connect",
+      "repository": "https://github.com/TakashiKakizoe1109/cc-backlog-connect"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.projectInfoCommand = projectInfoCommand;
+const loader_1 = require("../config/loader");
+const client_1 = require("../api/client");
+const VALID_TYPES = ["statuses", "issue-types", "priorities", "resolutions", "users", "categories", "versions"];
+async function projectInfoCommand(args) {
+    const infoType = args[0];
+    if (!infoType || !VALID_TYPES.includes(infoType)) {
+        console.error(`Usage: cc-backlog project-info <type>`);
+        console.error(`Types: ${VALID_TYPES.join(", ")}`);
+        process.exit(1);
+    }
+    const config = (0, loader_1.loadConfig)();
+    if (!config) {
+        console.error('Error: No configuration found. Run "cc-backlog config set" first.');
+        process.exit(1);
+    }
+    const client = new client_1.BacklogApiClient(config);
+    try {
+        let data;
+        switch (infoType) {
+            case "statuses":
+                data = await client.getStatuses(config.projectKey);
+                break;
+            case "issue-types":
+                data = await client.getIssueTypes(config.projectKey);
+                break;
+            case "priorities":
+                data = await client.getPriorities();
+                break;
+            case "resolutions":
+                data = await client.getResolutions();
+                break;
+            case "users":
+                data = await client.getProjectUsers(config.projectKey);
+                break;
+            case "categories":
+                data = await client.getCategories(config.projectKey);
+                break;
+            case "versions":
+                data = await client.getVersions(config.projectKey);
+                break;
+        }
+        console.log(JSON.stringify(data, null, 2));
+    }
+    catch (err) {
+        if (err instanceof client_1.BacklogClientError) {
+            console.error(`Error: ${err.message}`);
+            process.exit(2);
+        }
+        throw err;
+    }
+}

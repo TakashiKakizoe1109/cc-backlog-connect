@@ -5,6 +5,7 @@ interface ConfigSetOptions {
   space?: string;
   apiKey?: string;
   projectKey?: string;
+  mode?: string;
 }
 
 export function configShow(): void {
@@ -18,11 +19,17 @@ export function configShow(): void {
   console.log(`  space:       ${config.space}`);
   console.log(`  apiKey:      ${maskApiKey(config.apiKey)}`);
   console.log(`  projectKey:  ${config.projectKey}`);
+  console.log(`  mode:        ${config.mode ?? "read"}`);
 }
 
 export function configSet(opts: ConfigSetOptions): void {
-  if (!opts.space && !opts.apiKey && !opts.projectKey) {
-    console.error("Error: At least one of --space, --api-key, or --project-key is required.");
+  if (!opts.space && !opts.apiKey && !opts.projectKey && !opts.mode) {
+    console.error("Error: At least one of --space, --api-key, --project-key, or --mode is required.");
+    process.exit(1);
+  }
+
+  if (opts.mode && opts.mode !== "read" && opts.mode !== "write") {
+    console.error('Error: --mode must be "read" or "write".');
     process.exit(1);
   }
 
@@ -31,6 +38,7 @@ export function configSet(opts: ConfigSetOptions): void {
     space: opts.space ?? existing?.space ?? "",
     apiKey: opts.apiKey ?? existing?.apiKey ?? "",
     projectKey: opts.projectKey ?? existing?.projectKey ?? "",
+    mode: (opts.mode as "read" | "write") ?? existing?.mode,
   };
 
   if (!config.space || !config.apiKey || !config.projectKey) {

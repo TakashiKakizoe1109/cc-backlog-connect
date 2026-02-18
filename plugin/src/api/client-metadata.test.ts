@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BacklogApiClient } from "../src/api/client";
+import { BacklogApiClient } from "./client";
 
 const mockConfig = {
   space: "test-space",
@@ -140,6 +140,68 @@ describe("BacklogApiClient - Metadata Operations", () => {
       expect(url).toContain("keyword=");
       expect(url).toContain("statusId");
     });
+
+    it("issueTypeId フィルタを送信する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.searchIssues(10, { issueTypeId: [1, 2] });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("issueTypeId");
+    });
+
+    it("categoryId フィルタを送信する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.searchIssues(10, { categoryId: [3] });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("categoryId");
+    });
+
+    it("milestoneId フィルタを送信する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.searchIssues(10, { milestoneId: [5] });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("milestoneId");
+    });
+
+    it("assigneeId フィルタを送信する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.searchIssues(10, { assigneeId: [10] });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("assigneeId");
+    });
+
+    it("複数フィルタを組み合わせて送信する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.searchIssues(10, {
+        keyword: "test",
+        statusId: [1],
+        issueTypeId: [2],
+        categoryId: [3],
+        milestoneId: [4],
+        assigneeId: [5],
+      });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("keyword=test");
+      expect(url).toContain("statusId");
+      expect(url).toContain("issueTypeId");
+      expect(url).toContain("categoryId");
+      expect(url).toContain("milestoneId");
+      expect(url).toContain("assigneeId");
+    });
   });
 
   describe("countIssues", () => {
@@ -152,6 +214,25 @@ describe("BacklogApiClient - Metadata Operations", () => {
       expect(result.count).toBe(15);
       const [url] = fetchSpy.mock.calls[0];
       expect(url).toContain("/issues/count");
+    });
+
+    it("フィルタ付きで件数を取得する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ count: 5 }) });
+
+      const client = new BacklogApiClient(mockConfig);
+      const result = await client.countIssues(10, {
+        issueTypeId: [1],
+        categoryId: [2],
+        milestoneId: [3],
+        keyword: "バグ",
+      });
+
+      expect(result.count).toBe(5);
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("issueTypeId");
+      expect(url).toContain("categoryId");
+      expect(url).toContain("milestoneId");
+      expect(url).toContain("keyword=");
     });
   });
 });

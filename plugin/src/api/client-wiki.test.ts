@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BacklogApiClient } from "../src/api/client";
-import { BacklogWikiPage } from "../src/api/types";
+import { BacklogApiClient } from "./client";
+import { BacklogWikiPage } from "./types";
 
 const mockConfig = {
   space: "test-space",

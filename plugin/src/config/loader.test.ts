@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { maskApiKey, findProjectRoot } from "../src/config/loader";
+import { maskApiKey, findProjectRoot } from "./loader";
 
 describe("maskApiKey", () => {
   it("長いキー → 先頭4文字 + '...' + 末尾4文字", () => {

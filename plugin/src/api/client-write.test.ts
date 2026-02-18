@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BacklogApiClient, BacklogClientError } from "../src/api/client";
-import { BacklogIssue, BacklogComment } from "../src/api/types";
+import { BacklogApiClient, BacklogClientError } from "./client";
+import { BacklogIssue, BacklogComment } from "./types";
 
 const mockConfig = {
   space: "test-space",
@@ -231,6 +231,69 @@ describe("BacklogApiClient - Write Operations", () => {
       const [url, opts] = fetchSpy.mock.calls[0];
       expect(url).toContain("/issues/PROJ-1/comments/100");
       expect(opts.method).toBe("DELETE");
+    });
+  });
+
+  describe("getIssues", () => {
+    it("フィルタなしで課題を取得する", async () => {
+      const issues = [makeIssueResponse()];
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => issues });
+
+      const client = new BacklogApiClient(mockConfig);
+      const result = await client.getIssues(10);
+
+      expect(result).toHaveLength(1);
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("projectId");
+    });
+
+    it("statusId フィルタ付きで課題を取得する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.getIssues(10, { statusId: [1, 2] });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("statusId");
+    });
+
+    it("複数フィルタを組み合わせて課題を取得する", async () => {
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+
+      const client = new BacklogApiClient(mockConfig);
+      await client.getIssues(10, {
+        statusId: [1],
+        issueTypeId: [2],
+        categoryId: [3],
+        milestoneId: [4],
+        assigneeId: [5],
+        keyword: "テスト",
+      });
+
+      const [url] = fetchSpy.mock.calls[0];
+      expect(url).toContain("statusId");
+      expect(url).toContain("issueTypeId");
+      expect(url).toContain("categoryId");
+      expect(url).toContain("milestoneId");
+      expect(url).toContain("assigneeId");
+      expect(url).toContain("keyword=");
+    });
+
+    it("ページネーションで全件取得する", async () => {
+      const page1 = Array.from({ length: 100 }, (_, i) =>
+        makeIssueResponse({ id: i + 1, issueKey: `PROJ-${i + 1}` })
+      );
+      const page2 = [makeIssueResponse({ id: 101, issueKey: "PROJ-101" })];
+
+      fetchSpy
+        .mockResolvedValueOnce({ ok: true, json: async () => page1 })
+        .mockResolvedValueOnce({ ok: true, json: async () => page2 });
+
+      const client = new BacklogApiClient(mockConfig);
+      const result = await client.getIssues(10);
+
+      expect(result).toHaveLength(101);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 

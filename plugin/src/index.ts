@@ -40,12 +40,18 @@ COMMANDS:
     --space <name>      Backlog space name (e.g. test-company)
     --api-key <key>     API key
     --project-key <KEY> Project key (e.g. PROJ)
+    --mode <read|write> Operation mode (default: read)
 
   sync                Sync open issues
     --all               Sync all issues (including closed)
     --issue <KEY>       Sync a specific issue (e.g. PROJ-123)
     --force             Overwrite existing files
     --dry-run           Preview without writing files
+    --type-id <ids>     Filter by issue type (comma-separated)
+    --category-id <ids> Filter by category (comma-separated)
+    --milestone-id <ids> Filter by milestone (comma-separated)
+    --assignee-id <ids> Filter by assignee (comma-separated)
+    --keyword <text>    Filter by keyword
 
   issue <subcommand>  Manage issues
     get <KEY>           Get issue details (JSON)
@@ -94,20 +100,29 @@ async function main(): Promise<void> {
           space: options.space as string | undefined,
           apiKey: options["api-key"] as string | undefined,
           projectKey: options["project-key"] as string | undefined,
+          mode: options.mode as string | undefined,
         });
       } else {
         configShow();
       }
       break;
 
-    case "sync":
+    case "sync": {
+      const parseIds = (v: string | boolean | undefined): number[] | undefined =>
+        v && typeof v === "string" ? v.split(",").map(Number) : undefined;
       await syncCommand({
         all: options.all === true,
         issue: options.issue as string | undefined,
         force: options.force === true,
         dryRun: options["dry-run"] === true,
+        typeId: parseIds(options["type-id"]),
+        categoryId: parseIds(options["category-id"]),
+        milestoneId: parseIds(options["milestone-id"]),
+        assigneeId: parseIds(options["assignee-id"]),
+        keyword: options.keyword as string | undefined,
       });
       break;
+    }
 
     case "issue":
       await issueCommand(args.slice(1));

@@ -37,12 +37,12 @@ exports.syncCommand = syncCommand;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const loader_1 = require("../config/loader");
-const loader_2 = require("../config/loader");
 const client_1 = require("../api/client");
+const guard_1 = require("../config/guard");
 const issue_1 = require("../markdown/issue");
 const comments_1 = require("../markdown/comments");
 function docsDir() {
-    return path.join((0, loader_2.findProjectRoot)(), "docs", "backlog");
+    return path.join((0, loader_1.findProjectRoot)(), "docs", "backlog");
 }
 function ensureBacklogGitignore(baseDir) {
     const gitignorePath = path.join(baseDir, ".gitignore");
@@ -105,6 +105,7 @@ async function syncCommand(opts) {
         console.error("Error: Incomplete configuration. Run \"cc-backlog config\" to check.");
         process.exit(1);
     }
+    (0, guard_1.assertWriteMode)(config);
     const baseDir = docsDir();
     if (!fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });
@@ -137,7 +138,14 @@ async function syncCommand(opts) {
             if (opts.dryRun)
                 console.log("(dry run - no files will be written)");
             console.log("");
-            const issues = await client.getIssues(project.id, statusIds);
+            const issues = await client.getIssues(project.id, {
+                statusId: statusIds,
+                issueTypeId: opts.typeId,
+                categoryId: opts.categoryId,
+                milestoneId: opts.milestoneId,
+                assigneeId: opts.assigneeId,
+                keyword: opts.keyword,
+            });
             console.log(`Found ${issues.length} issue(s).`);
             console.log("");
             let synced = 0;

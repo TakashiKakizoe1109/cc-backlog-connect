@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.issueCommand = issueCommand;
 const loader_1 = require("../config/loader");
 const client_1 = require("../api/client");
+const guard_1 = require("../config/guard");
 function parseOptions(args) {
     const options = {};
     for (let i = 0; i < args.length; i++) {
@@ -49,6 +50,7 @@ async function issueCommand(args) {
                 break;
             }
             case "create": {
+                (0, guard_1.assertWriteMode)(config);
                 const opts = parseOptions(args.slice(1));
                 const summary = opts.summary;
                 const typeId = opts["type-id"];
@@ -74,6 +76,7 @@ async function issueCommand(args) {
                 break;
             }
             case "update": {
+                (0, guard_1.assertWriteMode)(config);
                 const issueKey = args[1];
                 if (!issueKey) {
                     console.error("Usage: cc-backlog issue update <ISSUE-KEY> [--status-id <id>] [--summary <text>] [--description <text>] [--assignee-id <id>] [--priority-id <id>] [--comment <text>]");
@@ -98,6 +101,7 @@ async function issueCommand(args) {
                 break;
             }
             case "delete": {
+                (0, guard_1.assertWriteMode)(config);
                 const issueKey = args[1];
                 if (!issueKey) {
                     console.error("Usage: cc-backlog issue delete <ISSUE-KEY>");
@@ -110,12 +114,14 @@ async function issueCommand(args) {
             case "search": {
                 const opts = parseOptions(args.slice(1));
                 const project = await client.getProject(config.projectKey);
-                const statusId = opts["status-id"]
-                    ? String(opts["status-id"]).split(",").map(Number)
-                    : undefined;
+                const parseIds = (v) => v && typeof v === "string" ? v.split(",").map(Number) : undefined;
                 const issues = await client.searchIssues(project.id, {
                     keyword: opts.keyword,
-                    statusId,
+                    statusId: parseIds(opts["status-id"]),
+                    assigneeId: parseIds(opts["assignee-id"]),
+                    issueTypeId: parseIds(opts["type-id"]),
+                    categoryId: parseIds(opts["category-id"]),
+                    milestoneId: parseIds(opts["milestone-id"]),
                 });
                 console.log(JSON.stringify(issues, null, 2));
                 break;
@@ -123,12 +129,14 @@ async function issueCommand(args) {
             case "count": {
                 const opts = parseOptions(args.slice(1));
                 const project = await client.getProject(config.projectKey);
-                const statusId = opts["status-id"]
-                    ? String(opts["status-id"]).split(",").map(Number)
-                    : undefined;
+                const parseIds = (v) => v && typeof v === "string" ? v.split(",").map(Number) : undefined;
                 const result = await client.countIssues(project.id, {
-                    statusId,
                     keyword: opts.keyword,
+                    statusId: parseIds(opts["status-id"]),
+                    assigneeId: parseIds(opts["assignee-id"]),
+                    issueTypeId: parseIds(opts["type-id"]),
+                    categoryId: parseIds(opts["category-id"]),
+                    milestoneId: parseIds(opts["milestone-id"]),
                 });
                 console.log(JSON.stringify(result, null, 2));
                 break;

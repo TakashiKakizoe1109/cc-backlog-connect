@@ -78,19 +78,45 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue update PROJ-123 --status-id 4
    node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue create --summary "タイトル" --type-id <id> --priority-id <id> --description "説明"
    ```
 
-### パターン4: 課題の検索
+### パターン4: 課題の検索・フィルタリング
+
+検索/件数取得は複数フィルタを組み合わせ可能です。IDが必要な場合は先に `project-info` で名前→IDを解決してください。
 
 ```bash
 # キーワード検索
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --keyword "バグ"
 
-# ステータス指定検索
+# ステータス指定検索（カンマ区切りで複数可）
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --status-id 1,2
 
-# 課題数取得
+# 担当者で絞り込み
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --assignee-id 100
+
+# 種別で絞り込み
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --type-id 10
+
+# カテゴリーで絞り込み
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --category-id 5
+
+# マイルストーンで絞り込み
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --milestone-id 3
+
+# 複合フィルタ例: 種別「バグ」＋担当者「山田」＋未完了
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search --type-id 10 --assignee-id 100 --status-id 1,2
+
+# 課題数取得（同じフィルタが使える）
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count
-node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count --status-id 1
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count --type-id 10 --status-id 1
 ```
+
+**フィルタID解決の手順:**
+| 項目 | 解決コマンド | 使用オプション |
+|---|---|---|
+| ステータス | `project-info statuses` | `--status-id` |
+| 担当者 | `project-info users` | `--assignee-id` |
+| 種別 | `project-info issue-types` | `--type-id` |
+| カテゴリー | `project-info categories` | `--category-id` |
+| マイルストーン | `project-info versions` | `--milestone-id` |
 
 ### パターン5: 課題の削除
 

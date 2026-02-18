@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.wikiCommand = wikiCommand;
 const loader_1 = require("../config/loader");
 const client_1 = require("../api/client");
+const guard_1 = require("../config/guard");
 function parseOptions(args) {
     const options = {};
     for (let i = 0; i < args.length; i++) {
@@ -63,6 +64,7 @@ async function wikiCommand(args) {
                 break;
             }
             case "create": {
+                (0, guard_1.assertWriteMode)(config);
                 const opts = parseOptions(args.slice(1));
                 const name = opts.name;
                 if (!name) {
@@ -85,6 +87,7 @@ async function wikiCommand(args) {
                 break;
             }
             case "update": {
+                (0, guard_1.assertWriteMode)(config);
                 const wikiId = args[1];
                 if (!wikiId) {
                     console.error("Usage: cc-backlog wiki update <wikiId> [--name <name>] [--content <text>] [--content-stdin]");
@@ -109,6 +112,7 @@ async function wikiCommand(args) {
                 break;
             }
             case "delete": {
+                (0, guard_1.assertWriteMode)(config);
                 const wikiId = args[1];
                 if (!wikiId) {
                     console.error("Usage: cc-backlog wiki delete <wikiId>");

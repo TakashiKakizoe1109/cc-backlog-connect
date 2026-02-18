@@ -39,12 +39,18 @@ COMMANDS:
     --space <name>      Backlog space name (e.g. test-company)
     --api-key <key>     API key
     --project-key <KEY> Project key (e.g. PROJ)
+    --mode <read|write> Operation mode (default: read)
 
   sync                Sync open issues
     --all               Sync all issues (including closed)
     --issue <KEY>       Sync a specific issue (e.g. PROJ-123)
     --force             Overwrite existing files
     --dry-run           Preview without writing files
+    --type-id <ids>     Filter by issue type (comma-separated)
+    --category-id <ids> Filter by category (comma-separated)
+    --milestone-id <ids> Filter by milestone (comma-separated)
+    --assignee-id <ids> Filter by assignee (comma-separated)
+    --keyword <text>    Filter by keyword
 
   issue <subcommand>  Manage issues
     get <KEY>           Get issue details (JSON)
@@ -91,20 +97,28 @@ async function main() {
                     space: options.space,
                     apiKey: options["api-key"],
                     projectKey: options["project-key"],
+                    mode: options.mode,
                 });
             }
             else {
                 (0, config_1.configShow)();
             }
             break;
-        case "sync":
+        case "sync": {
+            const parseIds = (v) => v && typeof v === "string" ? v.split(",").map(Number) : undefined;
             await (0, sync_1.syncCommand)({
                 all: options.all === true,
                 issue: options.issue,
                 force: options.force === true,
                 dryRun: options["dry-run"] === true,
+                typeId: parseIds(options["type-id"]),
+                categoryId: parseIds(options["category-id"]),
+                milestoneId: parseIds(options["milestone-id"]),
+                assigneeId: parseIds(options["assignee-id"]),
+                keyword: options.keyword,
             });
             break;
+        }
         case "issue":
             await (0, issue_1.issueCommand)(args.slice(1));
             break;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatCommentsMd } from "../src/markdown/comments";
-import { BacklogComment } from "../src/api/types";
+import { formatCommentsMd } from "./comments";
+import { BacklogComment } from "../api/types";
 
 function makeComment(overrides: Partial<BacklogComment> = {}): BacklogComment {
   return {

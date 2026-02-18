@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { loadConfig } from "../config/loader";
-import { findProjectRoot } from "../config/loader";
+import { loadConfig, findProjectRoot } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
+import { assertWriteMode } from "../config/guard";
 import { BacklogIssue } from "../api/types";
 import { formatIssueMd } from "../markdown/issue";
 import { formatCommentsMd } from "../markdown/comments";
@@ -12,6 +12,11 @@ interface SyncOptions {
   issue?: string;
   force: boolean;
   dryRun: boolean;
+  typeId?: number[];
+  categoryId?: number[];
+  milestoneId?: number[];
+  assigneeId?: number[];
+  keyword?: string;
 }
 
 function docsDir(): string {
@@ -95,6 +100,8 @@ export async function syncCommand(opts: SyncOptions): Promise<void> {
     process.exit(1);
   }
 
+  assertWriteMode(config);
+
   const baseDir = docsDir();
   if (!fs.existsSync(baseDir)) {
     fs.mkdirSync(baseDir, { recursive: true });
@@ -132,7 +139,14 @@ export async function syncCommand(opts: SyncOptions): Promise<void> {
       if (opts.dryRun) console.log("(dry run - no files will be written)");
       console.log("");
 
-      const issues = await client.getIssues(project.id, statusIds);
+      const issues = await client.getIssues(project.id, {
+        statusId: statusIds,
+        issueTypeId: opts.typeId,
+        categoryId: opts.categoryId,
+        milestoneId: opts.milestoneId,
+        assigneeId: opts.assigneeId,
+        keyword: opts.keyword,
+      });
       console.log(`Found ${issues.length} issue(s).`);
       console.log("");
 

@@ -70,10 +70,14 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue delete <ISSUE-KEY>
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search [options]
 ```
 
-| オプション         | 型      | 説明                             |
-|---------------|--------|--------------------------------|
-| `--keyword`   | string | キーワード検索（部分一致）                  |
-| `--status-id` | string | ステータスID（カンマ区切りで複数指定可: `1,2,3`） |
+| オプション             | 型      | 説明                                       |
+|-------------------|--------|------------------------------------------|
+| `--keyword`       | string | キーワード検索（部分一致）                            |
+| `--status-id`     | string | ステータスID（カンマ区切りで複数指定可: `1,2,3`）           |
+| `--assignee-id`   | string | 担当者ID（カンマ区切りで複数指定可）                      |
+| `--type-id`       | string | 課題種別ID（カンマ区切りで複数指定可）                     |
+| `--category-id`   | string | カテゴリーID（カンマ区切りで複数指定可）                    |
+| `--milestone-id`  | string | マイルストーンID（カンマ区切りで複数指定可）                  |
 
 ### issue count
 
@@ -81,10 +85,14 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search [options]
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count [options]
 ```
 
-| オプション         | 型      | 説明                    |
-|---------------|--------|-----------------------|
-| `--status-id` | string | ステータスID（カンマ区切りで複数指定可） |
-| `--keyword`   | string | キーワードフィルタ             |
+| オプション             | 型      | 説明                                       |
+|-------------------|--------|------------------------------------------|
+| `--keyword`       | string | キーワードフィルタ                                |
+| `--status-id`     | string | ステータスID（カンマ区切りで複数指定可）                    |
+| `--assignee-id`   | string | 担当者ID（カンマ区切りで複数指定可）                      |
+| `--type-id`       | string | 課題種別ID（カンマ区切りで複数指定可）                     |
+| `--category-id`   | string | カテゴリーID（カンマ区切りで複数指定可）                    |
+| `--milestone-id`  | string | マイルストーンID（カンマ区切りで複数指定可）                  |
 
 ## JSON 出力構造
 
@@ -142,10 +150,12 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count [options]
 2. name フィールドを部分一致で検索
 3. 一致するIDを使用
 
-| ユーザーの指定 | 解決コマンド                     | 使用先オプション          |
-|---------|----------------------------|-------------------|
-| ステータス名  | `project-info statuses`    | `--status-id`     |
-| 優先度名    | `project-info priorities`  | `--priority-id`   |
-| 担当者名    | `project-info users`       | `--assignee-id`   |
-| 課題種別名   | `project-info issue-types` | `--type-id`       |
-| 完了理由名   | `project-info resolutions` | `--resolution-id` |
+| ユーザーの指定  | 解決コマンド                     | 使用先オプション          |
+|----------|----------------------------|-------------------|
+| ステータス名   | `project-info statuses`    | `--status-id`     |
+| 優先度名     | `project-info priorities`  | `--priority-id`   |
+| 担当者名     | `project-info users`       | `--assignee-id`   |
+| 課題種別名    | `project-info issue-types` | `--type-id`       |
+| カテゴリー名   | `project-info categories`  | `--category-id`   |
+| マイルストーン名 | `project-info versions`    | `--milestone-id`  |
+| 完了理由名    | `project-info resolutions` | `--resolution-id` |

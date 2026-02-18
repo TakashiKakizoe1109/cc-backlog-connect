@@ -14,10 +14,15 @@ function configShow() {
     console.log(`  space:       ${config.space}`);
     console.log(`  apiKey:      ${(0, loader_1.maskApiKey)(config.apiKey)}`);
     console.log(`  projectKey:  ${config.projectKey}`);
+    console.log(`  mode:        ${config.mode ?? "read"}`);
 }
 function configSet(opts) {
-    if (!opts.space && !opts.apiKey && !opts.projectKey) {
-        console.error("Error: At least one of --space, --api-key, or --project-key is required.");
+    if (!opts.space && !opts.apiKey && !opts.projectKey && !opts.mode) {
+        console.error("Error: At least one of --space, --api-key, --project-key, or --mode is required.");
+        process.exit(1);
+    }
+    if (opts.mode && opts.mode !== "read" && opts.mode !== "write") {
+        console.error('Error: --mode must be "read" or "write".');
         process.exit(1);
     }
     const existing = (0, loader_1.loadConfig)();
@@ -25,6 +30,7 @@ function configSet(opts) {
         space: opts.space ?? existing?.space ?? "",
         apiKey: opts.apiKey ?? existing?.apiKey ?? "",
         projectKey: opts.projectKey ?? existing?.projectKey ?? "",
+        mode: opts.mode ?? existing?.mode,
     };
     if (!config.space || !config.apiKey || !config.projectKey) {
         const missing = [];

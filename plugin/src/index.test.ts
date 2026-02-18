@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseArgs } from "../src/index";
+import { parseArgs } from "./index";
 
 describe("parseArgs", () => {
   it("コマンドのみ → options は空", () => {

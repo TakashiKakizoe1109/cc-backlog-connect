@@ -155,7 +155,17 @@ export class BacklogApiClient {
 
   // --- Issues ---
 
-  async getIssues(projectId: number, statusIds?: number[]): Promise<BacklogIssue[]> {
+  async getIssues(
+    projectId: number,
+    opts: {
+      statusId?: number[];
+      issueTypeId?: number[];
+      categoryId?: number[];
+      milestoneId?: number[];
+      assigneeId?: number[];
+      keyword?: string;
+    } = {}
+  ): Promise<BacklogIssue[]> {
     const allIssues: BacklogIssue[] = [];
     let offset = 0;
 
@@ -168,9 +178,19 @@ export class BacklogApiClient {
         order: "desc",
       };
 
-      if (statusIds && statusIds.length > 0) {
-        for (let i = 0; i < statusIds.length; i++) {
-          params[`statusId[${i}]`] = String(statusIds[i]);
+      if (opts.keyword) params.keyword = opts.keyword;
+      const arrayParams: [string, number[] | undefined][] = [
+        ["statusId", opts.statusId],
+        ["issueTypeId", opts.issueTypeId],
+        ["categoryId", opts.categoryId],
+        ["milestoneId", opts.milestoneId],
+        ["assigneeId", opts.assigneeId],
+      ];
+      for (const [name, ids] of arrayParams) {
+        if (ids) {
+          for (let i = 0; i < ids.length; i++) {
+            params[`${name}[${i}]`] = String(ids[i]);
+          }
         }
       }
 
@@ -186,7 +206,16 @@ export class BacklogApiClient {
 
   async searchIssues(
     projectId: number,
-    opts: { keyword?: string; statusId?: number[]; assigneeId?: number[]; count?: number; offset?: number } = {}
+    opts: {
+      keyword?: string;
+      statusId?: number[];
+      assigneeId?: number[];
+      issueTypeId?: number[];
+      categoryId?: number[];
+      milestoneId?: number[];
+      count?: number;
+      offset?: number;
+    } = {}
   ): Promise<BacklogIssue[]> {
     const params: Record<string, string> = {
       "projectId[]": String(projectId),
@@ -196,14 +225,18 @@ export class BacklogApiClient {
       order: "desc",
     };
     if (opts.keyword) params.keyword = opts.keyword;
-    if (opts.statusId) {
-      for (let i = 0; i < opts.statusId.length; i++) {
-        params[`statusId[${i}]`] = String(opts.statusId[i]);
-      }
-    }
-    if (opts.assigneeId) {
-      for (let i = 0; i < opts.assigneeId.length; i++) {
-        params[`assigneeId[${i}]`] = String(opts.assigneeId[i]);
+    const arrayParams: [string, number[] | undefined][] = [
+      ["statusId", opts.statusId],
+      ["assigneeId", opts.assigneeId],
+      ["issueTypeId", opts.issueTypeId],
+      ["categoryId", opts.categoryId],
+      ["milestoneId", opts.milestoneId],
+    ];
+    for (const [name, ids] of arrayParams) {
+      if (ids) {
+        for (let i = 0; i < ids.length; i++) {
+          params[`${name}[${i}]`] = String(ids[i]);
+        }
       }
     }
     return this.request<BacklogIssue[]>("/issues", params);
@@ -211,15 +244,31 @@ export class BacklogApiClient {
 
   async countIssues(
     projectId: number,
-    opts: { statusId?: number[]; keyword?: string } = {}
+    opts: {
+      statusId?: number[];
+      assigneeId?: number[];
+      issueTypeId?: number[];
+      categoryId?: number[];
+      milestoneId?: number[];
+      keyword?: string;
+    } = {}
   ): Promise<{ count: number }> {
     const params: Record<string, string> = {
       "projectId[]": String(projectId),
     };
     if (opts.keyword) params.keyword = opts.keyword;
-    if (opts.statusId) {
-      for (let i = 0; i < opts.statusId.length; i++) {
-        params[`statusId[${i}]`] = String(opts.statusId[i]);
+    const arrayParams: [string, number[] | undefined][] = [
+      ["statusId", opts.statusId],
+      ["assigneeId", opts.assigneeId],
+      ["issueTypeId", opts.issueTypeId],
+      ["categoryId", opts.categoryId],
+      ["milestoneId", opts.milestoneId],
+    ];
+    for (const [name, ids] of arrayParams) {
+      if (ids) {
+        for (let i = 0; i < ids.length; i++) {
+          params[`${name}[${i}]`] = String(ids[i]);
+        }
       }
     }
     return this.request<{ count: number }>("/issues/count", params);

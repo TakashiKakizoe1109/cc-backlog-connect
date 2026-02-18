@@ -120,7 +120,7 @@ class BacklogApiClient {
         return this.request(`/projects/${projectKey}`);
     }
     // --- Issues ---
-    async getIssues(projectId, statusIds) {
+    async getIssues(projectId, opts = {}) {
         const allIssues = [];
         let offset = 0;
         while (true) {
@@ -131,9 +131,20 @@ class BacklogApiClient {
                 sort: "updated",
                 order: "desc",
             };
-            if (statusIds && statusIds.length > 0) {
-                for (let i = 0; i < statusIds.length; i++) {
-                    params[`statusId[${i}]`] = String(statusIds[i]);
+            if (opts.keyword)
+                params.keyword = opts.keyword;
+            const arrayParams = [
+                ["statusId", opts.statusId],
+                ["issueTypeId", opts.issueTypeId],
+                ["categoryId", opts.categoryId],
+                ["milestoneId", opts.milestoneId],
+                ["assigneeId", opts.assigneeId],
+            ];
+            for (const [name, ids] of arrayParams) {
+                if (ids) {
+                    for (let i = 0; i < ids.length; i++) {
+                        params[`${name}[${i}]`] = String(ids[i]);
+                    }
                 }
             }
             const issues = await this.request("/issues", params);
@@ -154,14 +165,18 @@ class BacklogApiClient {
         };
         if (opts.keyword)
             params.keyword = opts.keyword;
-        if (opts.statusId) {
-            for (let i = 0; i < opts.statusId.length; i++) {
-                params[`statusId[${i}]`] = String(opts.statusId[i]);
-            }
-        }
-        if (opts.assigneeId) {
-            for (let i = 0; i < opts.assigneeId.length; i++) {
-                params[`assigneeId[${i}]`] = String(opts.assigneeId[i]);
+        const arrayParams = [
+            ["statusId", opts.statusId],
+            ["assigneeId", opts.assigneeId],
+            ["issueTypeId", opts.issueTypeId],
+            ["categoryId", opts.categoryId],
+            ["milestoneId", opts.milestoneId],
+        ];
+        for (const [name, ids] of arrayParams) {
+            if (ids) {
+                for (let i = 0; i < ids.length; i++) {
+                    params[`${name}[${i}]`] = String(ids[i]);
+                }
             }
         }
         return this.request("/issues", params);
@@ -172,9 +187,18 @@ class BacklogApiClient {
         };
         if (opts.keyword)
             params.keyword = opts.keyword;
-        if (opts.statusId) {
-            for (let i = 0; i < opts.statusId.length; i++) {
-                params[`statusId[${i}]`] = String(opts.statusId[i]);
+        const arrayParams = [
+            ["statusId", opts.statusId],
+            ["assigneeId", opts.assigneeId],
+            ["issueTypeId", opts.issueTypeId],
+            ["categoryId", opts.categoryId],
+            ["milestoneId", opts.milestoneId],
+        ];
+        for (const [name, ids] of arrayParams) {
+            if (ids) {
+                for (let i = 0; i < ids.length; i++) {
+                    params[`${name}[${i}]`] = String(ids[i]);
+                }
             }
         }
         return this.request("/issues/count", params);

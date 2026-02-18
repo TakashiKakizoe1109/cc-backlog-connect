@@ -1,5 +1,6 @@
 import { loadConfig } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
+import { assertWriteMode } from "../config/guard";
 
 function parseOptions(args: string[]): Record<string, string | boolean> {
   const options: Record<string, string | boolean> = {};
@@ -69,6 +70,7 @@ export async function wikiCommand(args: string[]): Promise<void> {
       }
 
       case "create": {
+        assertWriteMode(config);
         const opts = parseOptions(args.slice(1));
         const name = opts.name as string;
 
@@ -94,6 +96,7 @@ export async function wikiCommand(args: string[]): Promise<void> {
       }
 
       case "update": {
+        assertWriteMode(config);
         const wikiId = args[1];
         if (!wikiId) {
           console.error("Usage: cc-backlog wiki update <wikiId> [--name <name>] [--content <text>] [--content-stdin]");
@@ -121,6 +124,7 @@ export async function wikiCommand(args: string[]): Promise<void> {
       }
 
       case "delete": {
+        assertWriteMode(config);
         const wikiId = args[1];
         if (!wikiId) {
           console.error("Usage: cc-backlog wiki delete <wikiId>");

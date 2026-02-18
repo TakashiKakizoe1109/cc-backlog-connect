@@ -14,9 +14,11 @@ cc-backlog-connect は、[Nulab Backlog](https://backlog.com/) と [Claude Code]
 ## 特徴
 
 - **課題の CRUD 操作** — Backlog 課題の取得・作成・更新・削除・検索をコマンドラインから実行
+- **高度なフィルタリング** — 種別・カテゴリー・マイルストーン・担当者・キーワードで課題を絞り込み検索
 - **コメント管理** — 課題へのコメント追加・一覧・更新・削除を Claude Code 内で完結
 - **Wiki 操作** — Backlog Wiki ページの閲覧・作成・編集をターミナルから直接実行
-- **ローカル同期** — Backlog 課題を Markdown ファイルとしてローカルに同期し、Claude Code のコンテキストとして活用
+- **ローカル同期** — Backlog 課題を Markdown ファイルとしてローカルに同期（フィルタ付き同期対応）
+- **Read/Write モード** — デフォルト read モードで書き込み操作を安全にガード。明示的に write モードを有効化して操作
 - **プロアクティブ Skills** — 会話中に課題キー（例: `PROJ-123`）や Wiki ページ名を言及するだけで、自動的に Backlog API から情報を取得
 - **プロジェクト単位の設定** — プロジェクトごとに異なる Backlog スペースへ接続可能
 
@@ -51,7 +53,7 @@ cc-backlog-connect を導入すると:
 Claude Code 内で `/cc-backlog-connect:config` を実行し、Backlog スペースの接続情報を設定します:
 
 ```
-set --space <スペース名> --api-key <APIキー> --project-key <プロジェクトキー>
+set --space <スペース名> --api-key <APIキー> --project-key <プロジェクトキー> --mode <read|write>
 ```
 
 | パラメータ         | 説明                              | 例                                                   |
@@ -59,6 +61,9 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 | `space`       | Backlog スペース名                   | `test-company` → `https://test-company.backlog.com` |
 | `api-key`     | Backlog API キー（個人設定 > API から発行） | —                                                   |
 | `project-key` | 対象プロジェクトキー                      | `PROJ`                                              |
+| `mode`        | 操作モード（デフォルト: `read`）            | `read`（読み取りのみ） / `write`（書き込み許可）                     |
+
+> **安全ガード**: デフォルトは `read` モードです。課題の作成・更新・削除、コメントの追加、Wiki の編集、同期を行うには `write` モードを有効にしてください。
 
 設定は `{プロジェクトルート}/.cc-backlog/config.json` に保存されます。API キーを含むため、`.gitignore` に追加してください。
 
@@ -71,6 +76,9 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 /cc-backlog-connect:sync                    # 未完了の課題をローカルに同期
 /cc-backlog-connect:sync --all              # 完了済みを含む全課題を同期
 /cc-backlog-connect:sync --issue PROJ-123   # 特定の課題のみ同期
+/cc-backlog-connect:sync --type-id 10       # 種別で絞り込み同期
+/cc-backlog-connect:sync --assignee-id 100  # 担当者で絞り込み同期
+/cc-backlog-connect:sync --keyword "検索語"   # キーワードで絞り込み同期
 ```
 
 ### プロアクティブ Skills — 会話中の自動 Backlog 連携
@@ -81,6 +89,7 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 |--------------------------------|-----------------|----------------|
 | 「PROJ-123 の課題を見せて」             | backlog-issue   | 課題の詳細を取得       |
 | 「ステータスを完了にして」                  | backlog-issue   | 課題ステータスを更新     |
+| 「バグの課題を種別で検索して」                | backlog-issue   | フィルタ付き課題検索     |
 | 「PROJ-123 にコメントして」             | backlog-comment | 課題にコメントを追加     |
 | 「Backlog Wiki の設計ドキュメントを参考にして」 | backlog-wiki    | Wiki ページを取得    |
 | 「Backlog の種別一覧を見せて」            | project-info    | プロジェクトメタデータを取得 |
@@ -127,12 +136,13 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 
 ### 同期の挙動
 
-| 状況       | 挙動                              |
-|----------|---------------------------------|
-| 初回同期     | 全対象課題を取得し `docs/backlog/` に書き出し |
-| 2 回目以降   | 既存ファイルはスキップ（`--force` で上書き可能）   |
-| 単一課題指定   | `--issue PROJ-123` で特定課題のみ取得    |
-| マークアップ変換 | Backlog 独自マークアップは変換せずそのまま保存     |
+| 状況       | 挙動                                                    |
+|----------|-------------------------------------------------------|
+| 初回同期     | 全対象課題を取得し `docs/backlog/` に書き出し                        |
+| 2 回目以降   | 既存ファイルはスキップ（`--force` で上書き可能）                          |
+| 単一課題指定   | `--issue PROJ-123` で特定課題のみ取得                           |
+| フィルタ同期   | `--type-id`, `--category-id`, `--milestone-id`, `--assignee-id`, `--keyword` で絞り込み |
+| マークアップ変換 | Backlog 独自マークアップは変換せずそのまま保存                            |
 
 ## 対応する Backlog API
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatIssueMd } from "../src/markdown/issue";
-import { BacklogIssue, BacklogAttachment } from "../src/api/types";
+import { formatIssueMd } from "./issue";
+import { BacklogIssue, BacklogAttachment } from "../api/types";
 
 function makeIssue(overrides: Partial<BacklogIssue> = {}): BacklogIssue {
   return {

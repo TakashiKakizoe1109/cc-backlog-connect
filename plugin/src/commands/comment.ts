@@ -1,5 +1,6 @@
 import { loadConfig } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
+import { assertWriteMode } from "../config/guard";
 
 function parseOptions(args: string[]): Record<string, string | boolean> {
   const options: Record<string, string | boolean> = {};
@@ -54,6 +55,7 @@ export async function commentCommand(args: string[]): Promise<void> {
       }
 
       case "add": {
+        assertWriteMode(config);
         const issueKey = args[1];
         if (!issueKey) {
           console.error("Usage: cc-backlog comment add <ISSUE-KEY> --content <text>");
@@ -89,6 +91,7 @@ export async function commentCommand(args: string[]): Promise<void> {
       }
 
       case "update": {
+        assertWriteMode(config);
         const issueKey = args[1];
         const opts = parseOptions(args.slice(2));
         const commentId = opts["comment-id"] as string;
@@ -106,6 +109,7 @@ export async function commentCommand(args: string[]): Promise<void> {
       }
 
       case "delete": {
+        assertWriteMode(config);
         const issueKey = args[1];
         const opts = parseOptions(args.slice(2));
         const commentId = opts["comment-id"] as string;

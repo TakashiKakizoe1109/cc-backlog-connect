@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.2.1] - 2026-02-18
+
+### Fixed
+- sync コマンドから不要な `assertWriteMode` ガードを削除（read モードでも同期可能に）
+
+### Added
+- backlog-issue Skill に sync パターンを追加（「同期したい」「課題を落として」等で sync が実行可能に）
+
 ## [0.2.0] - 2026-02-18
 
 ### Added

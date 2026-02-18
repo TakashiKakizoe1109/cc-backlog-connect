@@ -38,7 +38,6 @@ const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const loader_1 = require("../config/loader");
 const client_1 = require("../api/client");
-const guard_1 = require("../config/guard");
 const issue_1 = require("../markdown/issue");
 const comments_1 = require("../markdown/comments");
 function docsDir() {
@@ -105,7 +104,6 @@ async function syncCommand(opts) {
         console.error("Error: Incomplete configuration. Run \"cc-backlog config\" to check.");
         process.exit(1);
     }
-    (0, guard_1.assertWriteMode)(config);
     const baseDir = docsDir();
     if (!fs.existsSync(baseDir)) {
         fs.mkdirSync(baseDir, { recursive: true });

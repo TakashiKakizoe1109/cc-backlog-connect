@@ -64,10 +64,13 @@ describe("syncCommand", () => {
     await expect(syncCommand({ all: false, force: false, dryRun: false })).rejects.toThrow("exit");
   });
 
-  it("read モードでブロックされる", async () => {
+  it("read モードでも同期できる（Backlog書き込みなし）", async () => {
     vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
-    await expect(syncCommand({ all: false, force: false, dryRun: false })).rejects.toThrow("exit");
-    expect(mockError).toHaveBeenCalledWith(expect.stringContaining("write mode"));
+    mockClient.getIssues.mockResolvedValue([]);
+
+    await syncCommand({ all: false, force: false, dryRun: false });
+
+    expect(mockClient.getIssues).toHaveBeenCalled();
   });
 
   it("write モードで未完了課題を同期できる", async () => {

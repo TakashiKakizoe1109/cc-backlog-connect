@@ -1,12 +1,13 @@
 ---
 name: backlog-issue
 description: |
-  Backlog課題操作のプロアクティブSkill。課題の取得・作成・更新・削除・検索・件数取得に対応。
+  Backlog課題操作のプロアクティブSkill。課題の取得・作成・更新・削除・検索・件数取得・同期に対応。
   Use when user mentions a Backlog issue key (format: LETTERS-NUMBERS like PROJ-123, ABC-45),
   talks about Backlog tasks/issues/bugs, or wants to create/update/check Backlog issues.
   Use when user says "Backlogの課題", "課題を作って", "PROJ-123について",
-  "ステータスを変更", "担当者を変更", "課題を検索", "課題を確認", "課題の一覧".
-  Supports: get, create, update, delete, search, count subcommands.
+  "ステータスを変更", "担当者を変更", "課題を検索", "課題を確認", "課題の一覧",
+  "同期したい", "課題を落として", "sync", "ローカルに保存", "課題を同期".
+  Supports: get, create, update, delete, search, count subcommands and sync command.
   Can resolve human-readable names (status/priority/user) to IDs via project-info.
   Do NOT use for general project management unrelated to Nulab Backlog.
 ---
@@ -125,6 +126,36 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count --type-id 10 --status-id 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue delete PROJ-123
 ```
+
+### パターン6: 課題の同期（ローカル Markdown へ）
+
+ユーザーが「同期したい」「課題を落としたい」「ローカルに保存して」等と言った場合:
+
+**注意: sync は `issue` サブコマンドではなく、トップレベルの `sync` コマンドです。**
+**read モードでも実行可能です（Backlog への書き込みは行いません）。**
+
+```bash
+# 未完了の課題を同期
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync
+
+# 全課題を同期
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --all
+
+# 特定の課題のみ
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --issue PROJ-123
+
+# プレビュー（ファイル書き込みなし）
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --dry-run
+
+# 既存ファイルを上書き
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --force
+
+# フィルタ付き同期
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --type-id 10 --assignee-id 100
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --keyword "リリース"
+```
+
+同期先: `docs/backlog/{課題キー}/` に `issue.md`, `comments.md`, `attachments/` が生成されます。
 
 ## 出力形式
 

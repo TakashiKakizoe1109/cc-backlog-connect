@@ -2,7 +2,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadConfig, findProjectRoot } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
-import { assertWriteMode } from "../config/guard";
 import { BacklogIssue } from "../api/types";
 import { formatIssueMd } from "../markdown/issue";
 import { formatCommentsMd } from "../markdown/comments";
@@ -99,8 +98,6 @@ export async function syncCommand(opts: SyncOptions): Promise<void> {
     console.error("Error: Incomplete configuration. Run \"cc-backlog config\" to check.");
     process.exit(1);
   }
-
-  assertWriteMode(config);
 
   const baseDir = docsDir();
   if (!fs.existsSync(baseDir)) {

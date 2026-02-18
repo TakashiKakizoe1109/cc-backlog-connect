@@ -94,6 +94,28 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue count [options]
 | `--category-id`   | string | カテゴリーID（カンマ区切りで複数指定可）                    |
 | `--milestone-id`  | string | マイルストーンID（カンマ区切りで複数指定可）                  |
 
+### sync（トップレベルコマンド）
+
+**注意: `issue sync` ではなく `sync` です。read モードでも実行可能。**
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync [options]
+```
+
+| オプション             | 型      | 説明                                       |
+|-------------------|--------|------------------------------------------|
+| `--all`           | flag   | 全課題を同期（デフォルトは未完了のみ）                     |
+| `--issue`         | string | 特定の課題キーのみ同期（例: `PROJ-123`）               |
+| `--force`         | flag   | 既存ファイルを上書き                               |
+| `--dry-run`       | flag   | プレビュー（ファイル書き込みなし）                        |
+| `--type-id`       | number | 課題種別IDで絞り込み                              |
+| `--category-id`   | number | カテゴリーIDで絞り込み                             |
+| `--milestone-id`  | number | マイルストーンIDで絞り込み                           |
+| `--assignee-id`   | number | 担当者IDで絞り込み                               |
+| `--keyword`       | string | キーワードで絞り込み                               |
+
+同期先: `docs/backlog/{課題キー}/issue.md`, `comments.md`, `attachments/`
+
 ## JSON 出力構造
 
 ### BacklogIssue（get / search / create / update の出力）

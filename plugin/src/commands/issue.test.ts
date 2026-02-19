@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { issueCommand } from "./issue";
 import * as loader from "../config/loader";
 import * as clientModule from "../api/client";
+import * as cacheModule from "../cache/metadata";
 
 vi.mock("../config/loader");
 vi.mock("../api/client");
+vi.mock("../cache/metadata");
 
 const writeConfig = { space: "s", apiKey: "k", projectKey: "P", mode: "write" as const };
 const readConfig = { space: "s", apiKey: "k", projectKey: "P", mode: "read" as const };
@@ -25,8 +27,11 @@ let mockLog: ReturnType<typeof vi.spyOn>;
 let mockError: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.mocked(clientModule.BacklogApiClient).mockImplementation(() => mockClient as any);
-  mockClient.getProject.mockResolvedValue({ id: 10 });
+  vi.mocked(cacheModule.readCache).mockReturnValue(null);
+  vi.mocked(cacheModule.writeCache).mockImplementation(() => {});
+  vi.mocked(cacheModule.resolveNameToId).mockReturnValue(undefined);
   Object.values(mockClient).forEach((m) => typeof m === "function" && "mockClear" in m && m.mockClear());
   mockClient.getProject.mockResolvedValue({ id: 10 });
 
@@ -94,6 +99,45 @@ describe("issueCommand", () => {
       vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
       await expect(issueCommand(["create", "--summary", "x"])).rejects.toThrow("exit");
     });
+
+    it("--type と --priority 名前フラグでキャッシュから解決して作成できる", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockImplementation((type, name) => {
+        if (type === "issue-types" && name === "タスク") return 1;
+        if (type === "priorities" && name === "中") return 3;
+        return undefined;
+      });
+      mockClient.addIssue.mockResolvedValue({ issueKey: "PROJ-99", summary: "新規" });
+
+      await issueCommand(["create", "--summary", "新規", "--type", "タスク", "--priority", "中"]);
+
+      expect(mockClient.addIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ summary: "新規", issueTypeId: 1, priorityId: 3 })
+      );
+    });
+
+    it("キャッシュ無しで --type 名前を指定するとエラーになる", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockReturnValue(undefined);
+
+      await expect(
+        issueCommand(["create", "--summary", "x", "--type", "タスク", "--priority-id", "3"])
+      ).rejects.toThrow("exit");
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining("タスク"));
+    });
+
+    it("project キャッシュがある場合は getProject を呼ばない", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      vi.mocked(cacheModule.readCache).mockReturnValue({
+        cachedAt: "2026-01-01",
+        data: [{ id: 10 }],
+      } as any);
+      mockClient.addIssue.mockResolvedValue({ issueKey: "PROJ-99", summary: "新規" });
+
+      await issueCommand(["create", "--summary", "新規", "--type-id", "1", "--priority-id", "3"]);
+
+      expect(mockClient.getProject).not.toHaveBeenCalled();
+    });
   });
 
   describe("update", () => {
@@ -114,6 +158,39 @@ describe("issueCommand", () => {
     it("課題キーなしでエラー終了する", async () => {
       vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
       await expect(issueCommand(["update"])).rejects.toThrow("exit");
+    });
+
+    it("--status 名前フラグでキャッシュから解決して更新できる", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockImplementation((type, name) => {
+        if (type === "statuses" && name === "完了") return 4;
+        return undefined;
+      });
+      mockClient.updateIssue.mockResolvedValue({ issueKey: "PROJ-1", summary: "更新済" });
+
+      await issueCommand(["update", "PROJ-1", "--status", "完了"]);
+
+      expect(mockClient.updateIssue).toHaveBeenCalledWith("PROJ-1", expect.objectContaining({ statusId: 4 }));
+    });
+
+    it("--status-id が --status より優先される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      mockClient.updateIssue.mockResolvedValue({ issueKey: "PROJ-1", summary: "更新済" });
+
+      await issueCommand(["update", "PROJ-1", "--status-id", "4"]);
+
+      expect(cacheModule.resolveNameToId).not.toHaveBeenCalledWith("statuses", expect.any(String));
+      expect(mockClient.updateIssue).toHaveBeenCalledWith("PROJ-1", expect.objectContaining({ statusId: 4 }));
+    });
+
+    it("キャッシュ無しで --status 名前を指定するとエラーになる", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockReturnValue(undefined);
+
+      await expect(
+        issueCommand(["update", "PROJ-1", "--status", "完了"])
+      ).rejects.toThrow("exit");
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining("完了"));
     });
   });
 
@@ -155,6 +232,91 @@ describe("issueCommand", () => {
 
       expect(mockClient.searchIssues).toHaveBeenCalled();
     });
+
+    it("--assignee 名前フラグでキャッシュから解決して検索できる", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockImplementation((type, name) => {
+        if (type === "users" && name === "山田太郎") return 100;
+        return undefined;
+      });
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--assignee", "山田太郎"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        assigneeId: [100],
+      }));
+    });
+
+    it("--assignee で userId でもマッチできる（resolveNameToId に委譲）", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      vi.mocked(cacheModule.resolveNameToId).mockImplementation((type, name) => {
+        if (type === "users" && name === "yamada") return 100;
+        return undefined;
+      });
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--assignee", "yamada"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        assigneeId: [100],
+      }));
+    });
+
+    it("--version-id フィルターが searchIssues に versionId として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--version-id", "10,11"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        versionId: [10, 11],
+      }));
+    });
+
+    it("--priority-id フィルターが searchIssues に priorityId として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--priority-id", "2"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        priorityId: [2],
+      }));
+    });
+
+    it("--created-user-id フィルターが searchIssues に createdUserId として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--created-user-id", "42"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        createdUserId: [42],
+      }));
+    });
+
+    it("--resolution-id フィルターが searchIssues に resolutionId として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--resolution-id", "1"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        resolutionId: [1],
+      }));
+    });
+
+    it("--parent-child フィルターが searchIssues に parentChild として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.searchIssues.mockResolvedValue([]);
+
+      await issueCommand(["search", "--parent-child", "4"]);
+
+      expect(mockClient.searchIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        parentChild: 4,
+      }));
+    });
   });
 
   describe("count", () => {
@@ -166,6 +328,28 @@ describe("issueCommand", () => {
 
       expect(mockClient.countIssues).toHaveBeenCalledWith(10, expect.objectContaining({
         statusId: [1, 2],
+      }));
+    });
+
+    it("--version-id フィルターが countIssues に versionId として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.countIssues.mockResolvedValue({ count: 5 });
+
+      await issueCommand(["count", "--version-id", "10"]);
+
+      expect(mockClient.countIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        versionId: [10],
+      }));
+    });
+
+    it("--parent-child フィルターが countIssues に parentChild として渡される", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+      mockClient.countIssues.mockResolvedValue({ count: 3 });
+
+      await issueCommand(["count", "--parent-child", "2"]);
+
+      expect(mockClient.countIssues).toHaveBeenCalledWith(10, expect.objectContaining({
+        parentChild: 2,
       }));
     });
   });

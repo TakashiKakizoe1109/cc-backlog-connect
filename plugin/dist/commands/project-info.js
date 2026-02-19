@@ -3,13 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.projectInfoCommand = projectInfoCommand;
 const loader_1 = require("../config/loader");
 const client_1 = require("../api/client");
+const metadata_1 = require("../cache/metadata");
 const VALID_TYPES = ["statuses", "issue-types", "priorities", "resolutions", "users", "categories", "versions"];
 async function projectInfoCommand(args) {
     const infoType = args[0];
+    const refresh = args.includes("--refresh");
     if (!infoType || !VALID_TYPES.includes(infoType)) {
-        console.error(`Usage: cc-backlog project-info <type>`);
+        console.error(`Usage: cc-backlog project-info <type> [--refresh]`);
         console.error(`Types: ${VALID_TYPES.join(", ")}`);
         process.exit(1);
+    }
+    // Cache-first: return cached data unless --refresh requested
+    if (!refresh) {
+        const cached = (0, metadata_1.readCache)(infoType);
+        if (cached) {
+            console.log(JSON.stringify(cached.data, null, 2));
+            return;
+        }
     }
     const config = (0, loader_1.loadConfig)();
     if (!config) {
@@ -42,6 +52,7 @@ async function projectInfoCommand(args) {
                 data = await client.getVersions(config.projectKey);
                 break;
         }
+        (0, metadata_1.writeCache)(infoType, data);
         console.log(JSON.stringify(data, null, 2));
     }
     catch (err) {

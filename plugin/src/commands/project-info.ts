@@ -1,5 +1,7 @@
 import { loadConfig } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
+import { readCache, writeCache } from "../cache/metadata";
+import type { MetadataType } from "../cache/metadata";
 
 type InfoType = "statuses" | "issue-types" | "priorities" | "resolutions" | "users" | "categories" | "versions";
 
@@ -7,11 +9,21 @@ const VALID_TYPES: InfoType[] = ["statuses", "issue-types", "priorities", "resol
 
 export async function projectInfoCommand(args: string[]): Promise<void> {
   const infoType = args[0] as InfoType | undefined;
+  const refresh = args.includes("--refresh");
 
   if (!infoType || !VALID_TYPES.includes(infoType)) {
-    console.error(`Usage: cc-backlog project-info <type>`);
+    console.error(`Usage: cc-backlog project-info <type> [--refresh]`);
     console.error(`Types: ${VALID_TYPES.join(", ")}`);
     process.exit(1);
+  }
+
+  // Cache-first: return cached data unless --refresh requested
+  if (!refresh) {
+    const cached = readCache(infoType as MetadataType);
+    if (cached) {
+      console.log(JSON.stringify(cached.data, null, 2));
+      return;
+    }
   }
 
   const config = loadConfig();
@@ -49,6 +61,7 @@ export async function projectInfoCommand(args: string[]): Promise<void> {
         break;
     }
 
+    writeCache(infoType as MetadataType, data as unknown[]);
     console.log(JSON.stringify(data, null, 2));
   } catch (err) {
     if (err instanceof BacklogClientError) {

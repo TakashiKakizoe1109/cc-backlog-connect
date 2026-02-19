@@ -73,7 +73,7 @@ function saveConfig(config) {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(configPath(root), JSON.stringify(config, null, 2) + "\n");
+    fs.writeFileSync(configPath(root), JSON.stringify(config, null, 2) + "\n", { mode: 0o600 });
 }
 function maskApiKey(key) {
     if (key.length <= 8)

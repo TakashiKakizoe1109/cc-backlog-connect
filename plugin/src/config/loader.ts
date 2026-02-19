@@ -42,7 +42,7 @@ export function saveConfig(config: BacklogConfig): void {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  fs.writeFileSync(configPath(root), JSON.stringify(config, null, 2) + "\n");
+  fs.writeFileSync(configPath(root), JSON.stringify(config, null, 2) + "\n", { mode: 0o600 });
 }
 
 export function maskApiKey(key: string): string {

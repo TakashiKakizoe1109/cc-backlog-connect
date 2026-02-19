@@ -133,12 +133,18 @@ class BacklogApiClient {
             };
             if (opts.keyword)
                 params.keyword = opts.keyword;
+            if (opts.parentChild !== undefined)
+                params.parentChild = String(opts.parentChild);
             const arrayParams = [
                 ["statusId", opts.statusId],
                 ["issueTypeId", opts.issueTypeId],
                 ["categoryId", opts.categoryId],
                 ["milestoneId", opts.milestoneId],
                 ["assigneeId", opts.assigneeId],
+                ["versionId", opts.versionId],
+                ["priorityId", opts.priorityId],
+                ["createdUserId", opts.createdUserId],
+                ["resolutionId", opts.resolutionId],
             ];
             for (const [name, ids] of arrayParams) {
                 if (ids) {
@@ -165,12 +171,18 @@ class BacklogApiClient {
         };
         if (opts.keyword)
             params.keyword = opts.keyword;
+        if (opts.parentChild !== undefined)
+            params.parentChild = String(opts.parentChild);
         const arrayParams = [
             ["statusId", opts.statusId],
             ["assigneeId", opts.assigneeId],
             ["issueTypeId", opts.issueTypeId],
             ["categoryId", opts.categoryId],
             ["milestoneId", opts.milestoneId],
+            ["versionId", opts.versionId],
+            ["priorityId", opts.priorityId],
+            ["createdUserId", opts.createdUserId],
+            ["resolutionId", opts.resolutionId],
         ];
         for (const [name, ids] of arrayParams) {
             if (ids) {
@@ -187,12 +199,18 @@ class BacklogApiClient {
         };
         if (opts.keyword)
             params.keyword = opts.keyword;
+        if (opts.parentChild !== undefined)
+            params.parentChild = String(opts.parentChild);
         const arrayParams = [
             ["statusId", opts.statusId],
             ["assigneeId", opts.assigneeId],
             ["issueTypeId", opts.issueTypeId],
             ["categoryId", opts.categoryId],
             ["milestoneId", opts.milestoneId],
+            ["versionId", opts.versionId],
+            ["priorityId", opts.priorityId],
+            ["createdUserId", opts.createdUserId],
+            ["resolutionId", opts.resolutionId],
         ];
         for (const [name, ids] of arrayParams) {
             if (ids) {

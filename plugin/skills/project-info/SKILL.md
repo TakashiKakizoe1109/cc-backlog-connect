@@ -12,6 +12,7 @@ description: |
 ---
 
 Backlog プロジェクトのメタデータ（ステータス、種別、優先度、メンバー等）を参照するスキルです。
+結果は `.cc-backlog/` ディレクトリにキャッシュされ、次回以降は API コールなしに即座に返します。
 
 ## 事前チェック
 
@@ -24,7 +25,11 @@ Backlog プロジェクトのメタデータ（ステータス、種別、優先
 ## 実行方法
 
 ```bash
+# 通常実行（キャッシュがあればキャッシュから返す）
 node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info <type>
+
+# 強制更新（キャッシュを無視して API から再取得）
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info <type> --refresh
 ```
 
 ## 利用可能なタイプ
@@ -39,6 +44,17 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info <type>
 | `categories` | カテゴリ一覧 | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info categories` |
 | `versions` | バージョン/マイルストーン一覧 | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info versions` |
 
+## キャッシュ動作
+
+- **初回実行**: Backlog API を呼び出し、`.cc-backlog/<type>.json` にキャッシュして返す
+- **2回目以降**: キャッシュから即座に返す（API コールなし）
+- **`--refresh` フラグ**: キャッシュがあっても API から再取得してキャッシュを更新
+
+```bash
+# キャッシュを強制更新する場合
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info statuses --refresh
+```
+
 ## 出力形式
 
 全タイプ共通で JSON 配列を出力します。各要素には最低限 `id` と `name` フィールドが含まれます。
@@ -48,11 +64,11 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info <type>
 ## 他のSkillからの利用
 
 このコマンドは、backlog-issue スキルや backlog-comment スキルからID解決のために内部的に利用されます。
+v0.3.0 以降は名前ベースフラグ（`--status "完了"` 等）を使えばこのコマンドの明示的な呼び出しは不要です。
 
 例: ユーザーが「ステータスを完了にして」と言った場合
-1. `project-info statuses` でステータス一覧を取得
-2. "完了" に一致する id を特定
-3. `issue update PROJ-123 --status-id <id>` で更新
+1. キャッシュがある場合: `issue update PROJ-123 --status "完了"` を直接実行（API 往復なし）
+2. キャッシュがない場合: `project-info statuses` でステータス一覧を取得後、`issue update PROJ-123 --status-id <id>` で更新
 
 ## 詳細リファレンス
 

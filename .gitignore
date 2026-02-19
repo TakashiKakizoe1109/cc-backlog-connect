@@ -108,6 +108,9 @@ CODEX.md
 .codex/
 .agent/
 
+# Backlog plugin local data (contains API key and cached metadata)
+.cc-backlog/
+
 # Environment and secrets
 .env
 .env.local

@@ -1,6 +1,8 @@
 import { loadConfig } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
 import { assertWriteMode } from "../config/guard";
+import { readCache, writeCache, resolveNameToId } from "../cache/metadata";
+import type { ResolvableMetadataType } from "../cache/metadata";
 
 function parseOptions(args: string[]): Record<string, string | boolean> {
   const options: Record<string, string | boolean> = {};
@@ -22,6 +24,51 @@ function parseOptions(args: string[]): Record<string, string | boolean> {
 
 function issueUrl(space: string, issueKey: string): string {
   return `https://${space}.backlog.com/view/${issueKey}`;
+}
+
+function resolveId(
+  opts: Record<string, string | boolean>,
+  nameFlag: string,
+  idFlag: string,
+  metaType: ResolvableMetadataType
+): number | undefined {
+  if (opts[idFlag]) return Number(opts[idFlag]);
+  if (opts[nameFlag] && typeof opts[nameFlag] === "string") {
+    const id = resolveNameToId(metaType, opts[nameFlag] as string);
+    if (id === undefined) {
+      console.error(
+        `Error: Cannot resolve "${opts[nameFlag]}" for ${metaType}. Run "cc-backlog project-info ${metaType}" first.`
+      );
+      process.exit(1);
+    }
+    return id;
+  }
+  return undefined;
+}
+
+function resolveIdToArray(
+  opts: Record<string, string | boolean>,
+  nameFlag: string,
+  idFlag: string,
+  metaType: ResolvableMetadataType
+): number[] | undefined {
+  const parseIds = (v: string | boolean | undefined) =>
+    v && typeof v === "string" ? v.split(",").map(Number) : undefined;
+
+  const ids = parseIds(opts[idFlag]);
+  if (ids) return ids;
+
+  if (opts[nameFlag] && typeof opts[nameFlag] === "string") {
+    const id = resolveNameToId(metaType, opts[nameFlag] as string);
+    if (id === undefined) {
+      console.error(
+        `Error: Cannot resolve "${opts[nameFlag]}" for ${metaType}. Run "cc-backlog project-info ${metaType}" first.`
+      );
+      process.exit(1);
+    }
+    return [id];
+  }
+  return undefined;
 }
 
 export async function issueCommand(args: string[]): Promise<void> {
@@ -57,22 +104,33 @@ export async function issueCommand(args: string[]): Promise<void> {
         assertWriteMode(config);
         const opts = parseOptions(args.slice(1));
         const summary = opts.summary as string;
-        const typeId = opts["type-id"] as string;
-        const priorityId = opts["priority-id"] as string;
+        const typeId = resolveId(opts, "type", "type-id", "issue-types");
+        const priorityId = resolveId(opts, "priority", "priority-id", "priorities");
+        const assigneeId = resolveId(opts, "assignee", "assignee-id", "users");
 
-        if (!summary || !typeId || !priorityId) {
+        if (!summary || typeId === undefined || priorityId === undefined) {
           console.error("Usage: cc-backlog issue create --summary <text> --type-id <id> --priority-id <id> [--description <text>] [--assignee-id <id>] [--due-date <YYYY-MM-DD>]");
           process.exit(1);
         }
 
-        const project = await client.getProject(config.projectKey);
+        // Use cached project ID if available, otherwise fetch and cache
+        let projectId: number;
+        const cachedProject = readCache<{ id: number }>("project");
+        if (cachedProject?.data[0]) {
+          projectId = cachedProject.data[0].id;
+        } else {
+          const project = await client.getProject(config.projectKey);
+          writeCache("project", [project]);
+          projectId = project.id;
+        }
+
         const issue = await client.addIssue({
-          projectId: project.id,
+          projectId,
           summary,
-          issueTypeId: Number(typeId),
-          priorityId: Number(priorityId),
+          issueTypeId: typeId,
+          priorityId: priorityId,
           description: opts.description as string | undefined,
-          assigneeId: opts["assignee-id"] ? Number(opts["assignee-id"]) : undefined,
+          assigneeId,
           dueDate: opts["due-date"] as string | undefined,
           estimatedHours: opts["estimated-hours"] ? Number(opts["estimated-hours"]) : undefined,
           actualHours: opts["actual-hours"] ? Number(opts["actual-hours"]) : undefined,
@@ -87,7 +145,7 @@ export async function issueCommand(args: string[]): Promise<void> {
         assertWriteMode(config);
         const issueKey = args[1];
         if (!issueKey) {
-          console.error("Usage: cc-backlog issue update <ISSUE-KEY> [--status-id <id>] [--summary <text>] [--description <text>] [--assignee-id <id>] [--priority-id <id>] [--comment <text>]");
+          console.error("Usage: cc-backlog issue update <ISSUE-KEY> [--status-id <id>] [--status <name>] [--summary <text>] [--description <text>] [--assignee-id <id>] [--priority-id <id>] [--comment <text>]");
           process.exit(1);
         }
 
@@ -95,11 +153,11 @@ export async function issueCommand(args: string[]): Promise<void> {
         const issue = await client.updateIssue(issueKey, {
           summary: opts.summary as string | undefined,
           description: opts.description as string | undefined,
-          statusId: opts["status-id"] ? Number(opts["status-id"]) : undefined,
-          assigneeId: opts["assignee-id"] ? Number(opts["assignee-id"]) : undefined,
-          priorityId: opts["priority-id"] ? Number(opts["priority-id"]) : undefined,
-          issueTypeId: opts["type-id"] ? Number(opts["type-id"]) : undefined,
-          resolutionId: opts["resolution-id"] ? Number(opts["resolution-id"]) : undefined,
+          statusId: resolveId(opts, "status", "status-id", "statuses"),
+          assigneeId: resolveId(opts, "assignee", "assignee-id", "users"),
+          priorityId: resolveId(opts, "priority", "priority-id", "priorities"),
+          issueTypeId: resolveId(opts, "type", "type-id", "issue-types"),
+          resolutionId: resolveId(opts, "resolution", "resolution-id", "resolutions"),
           dueDate: opts["due-date"] as string | undefined,
           estimatedHours: opts["estimated-hours"] ? Number(opts["estimated-hours"]) : undefined,
           actualHours: opts["actual-hours"] ? Number(opts["actual-hours"]) : undefined,
@@ -126,18 +184,30 @@ export async function issueCommand(args: string[]): Promise<void> {
 
       case "search": {
         const opts = parseOptions(args.slice(1));
-        const project = await client.getProject(config.projectKey);
 
-        const parseIds = (v: string | boolean | undefined) =>
-          v && typeof v === "string" ? v.split(",").map(Number) : undefined;
+        // Use cached project ID if available, otherwise fetch and cache
+        let projectId: number;
+        const cachedProject = readCache<{ id: number }>("project");
+        if (cachedProject?.data[0]) {
+          projectId = cachedProject.data[0].id;
+        } else {
+          const project = await client.getProject(config.projectKey);
+          writeCache("project", [project]);
+          projectId = project.id;
+        }
 
-        const issues = await client.searchIssues(project.id, {
+        const issues = await client.searchIssues(projectId, {
           keyword: opts.keyword as string | undefined,
-          statusId: parseIds(opts["status-id"]),
-          assigneeId: parseIds(opts["assignee-id"]),
-          issueTypeId: parseIds(opts["type-id"]),
-          categoryId: parseIds(opts["category-id"]),
-          milestoneId: parseIds(opts["milestone-id"]),
+          statusId: resolveIdToArray(opts, "status", "status-id", "statuses"),
+          assigneeId: resolveIdToArray(opts, "assignee", "assignee-id", "users"),
+          issueTypeId: resolveIdToArray(opts, "type", "type-id", "issue-types"),
+          categoryId: resolveIdToArray(opts, "category", "category-id", "categories"),
+          milestoneId: resolveIdToArray(opts, "milestone", "milestone-id", "versions"),
+          versionId: resolveIdToArray(opts, "version", "version-id", "versions"),
+          priorityId: resolveIdToArray(opts, "priority", "priority-id", "priorities"),
+          createdUserId: resolveIdToArray(opts, "created-user", "created-user-id", "users"),
+          resolutionId: resolveIdToArray(opts, "resolution", "resolution-id", "resolutions"),
+          parentChild: opts["parent-child"] !== undefined ? Number(opts["parent-child"]) : undefined,
         });
 
         console.log(JSON.stringify(issues, null, 2));
@@ -146,18 +216,30 @@ export async function issueCommand(args: string[]): Promise<void> {
 
       case "count": {
         const opts = parseOptions(args.slice(1));
-        const project = await client.getProject(config.projectKey);
 
-        const parseIds = (v: string | boolean | undefined) =>
-          v && typeof v === "string" ? v.split(",").map(Number) : undefined;
+        // Use cached project ID if available, otherwise fetch and cache
+        let projectId: number;
+        const cachedProject = readCache<{ id: number }>("project");
+        if (cachedProject?.data[0]) {
+          projectId = cachedProject.data[0].id;
+        } else {
+          const project = await client.getProject(config.projectKey);
+          writeCache("project", [project]);
+          projectId = project.id;
+        }
 
-        const result = await client.countIssues(project.id, {
+        const result = await client.countIssues(projectId, {
           keyword: opts.keyword as string | undefined,
-          statusId: parseIds(opts["status-id"]),
-          assigneeId: parseIds(opts["assignee-id"]),
-          issueTypeId: parseIds(opts["type-id"]),
-          categoryId: parseIds(opts["category-id"]),
-          milestoneId: parseIds(opts["milestone-id"]),
+          statusId: resolveIdToArray(opts, "status", "status-id", "statuses"),
+          assigneeId: resolveIdToArray(opts, "assignee", "assignee-id", "users"),
+          issueTypeId: resolveIdToArray(opts, "type", "type-id", "issue-types"),
+          categoryId: resolveIdToArray(opts, "category", "category-id", "categories"),
+          milestoneId: resolveIdToArray(opts, "milestone", "milestone-id", "versions"),
+          versionId: resolveIdToArray(opts, "version", "version-id", "versions"),
+          priorityId: resolveIdToArray(opts, "priority", "priority-id", "priorities"),
+          createdUserId: resolveIdToArray(opts, "created-user", "created-user-id", "users"),
+          resolutionId: resolveIdToArray(opts, "resolution", "resolution-id", "resolutions"),
+          parentChild: opts["parent-child"] !== undefined ? Number(opts["parent-child"]) : undefined,
         });
 
         console.log(JSON.stringify(result, null, 2));

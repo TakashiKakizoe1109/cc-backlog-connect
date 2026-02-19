@@ -40,6 +40,7 @@ const loader_1 = require("../config/loader");
 const client_1 = require("../api/client");
 const issue_1 = require("../markdown/issue");
 const comments_1 = require("../markdown/comments");
+const metadata_1 = require("../cache/metadata");
 function docsDir() {
     return path.join((0, loader_1.findProjectRoot)(), "docs", "backlog");
 }
@@ -64,11 +65,13 @@ async function syncIssue(client, issue, space, opts) {
         return true;
     }
     fs.mkdirSync(issueDir, { recursive: true });
-    // Fetch attachments list first (needed for issue.md)
-    const attachments = await client.getAttachments(issue.issueKey);
+    // Fetch attachments and comments in parallel
+    const [attachments, comments] = await Promise.all([
+        client.getAttachments(issue.issueKey),
+        client.getComments(issue.issueKey),
+    ]);
     const issueMd = (0, issue_1.formatIssueMd)(issue, space, attachments);
     fs.writeFileSync(issuePath, issueMd);
-    const comments = await client.getComments(issue.issueKey);
     const commentsMd = (0, comments_1.formatCommentsMd)(issue.issueKey, issue.summary, comments);
     if (commentsMd) {
         fs.writeFileSync(commentsPath, commentsMd);
@@ -120,13 +123,19 @@ async function syncCommand(opts) {
         }
         else {
             const project = await client.getProject(config.projectKey);
+            (0, metadata_1.writeCache)("project", [project]);
             let statusFilter;
             let statusIds;
             if (opts.all) {
                 statusFilter = "all statuses";
             }
+            else if (opts.statusId && opts.statusId.length > 0) {
+                statusIds = opts.statusId;
+                statusFilter = `status IDs: ${opts.statusId.join(",")}`;
+            }
             else {
                 const statuses = await client.getStatuses(config.projectKey);
+                (0, metadata_1.writeCache)("statuses", statuses);
                 const closedStatuses = statuses.filter((s) => s.name === "Closed" || s.name === "完了");
                 const closedIds = new Set(closedStatuses.map((s) => s.id));
                 statusIds = statuses.filter((s) => !closedIds.has(s.id)).map((s) => s.id);
@@ -143,14 +152,20 @@ async function syncCommand(opts) {
                 milestoneId: opts.milestoneId,
                 assigneeId: opts.assigneeId,
                 keyword: opts.keyword,
+                versionId: opts.versionId,
+                priorityId: opts.priorityId,
+                createdUserId: opts.createdUserId,
+                resolutionId: opts.resolutionId,
+                parentChild: opts.parentChild,
             });
             console.log(`Found ${issues.length} issue(s).`);
             console.log("");
+            const parallel = config.parallel ?? 5;
             let synced = 0;
-            for (const issue of issues) {
-                const didSync = await syncIssue(client, issue, config.space, opts);
-                if (didSync)
-                    synced++;
+            for (let i = 0; i < issues.length; i += parallel) {
+                const chunk = issues.slice(i, i + parallel);
+                const results = await Promise.all(chunk.map((issue) => syncIssue(client, issue, config.space, opts)));
+                synced += results.filter(Boolean).length;
             }
             console.log("");
             console.log(`Done. ${synced} issue(s) synced.`);

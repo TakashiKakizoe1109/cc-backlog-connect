@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { projectInfoCommand } from "./project-info";
 import * as loader from "../config/loader";
 import * as clientModule from "../api/client";
+import * as cacheModule from "../cache/metadata";
 
 vi.mock("../config/loader");
 vi.mock("../api/client");
+vi.mock("../cache/metadata");
 
 const config = { space: "s", apiKey: "k", projectKey: "P" };
 
@@ -25,6 +27,8 @@ let mockError: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   vi.mocked(clientModule.BacklogApiClient).mockImplementation(() => mockClient as any);
   vi.mocked(loader.loadConfig).mockReturnValue(config);
+  vi.mocked(cacheModule.readCache).mockReturnValue(null);
+  vi.mocked(cacheModule.writeCache).mockImplementation(() => {});
   Object.values(mockClient).forEach((m) => m.mockClear());
 
   mockExit = vi.spyOn(process, "exit").mockImplementation((() => { throw new Error("exit"); }) as never);
@@ -47,7 +51,7 @@ describe("projectInfoCommand", () => {
     await expect(projectInfoCommand(["invalid"])).rejects.toThrow("exit");
   });
 
-  it("設定未定義でエラー終了する", async () => {
+  it("設定未定義でエラー終了する（キャッシュなし）", async () => {
     vi.mocked(loader.loadConfig).mockReturnValue(null);
     await expect(projectInfoCommand(["statuses"])).rejects.toThrow("exit");
   });
@@ -80,5 +84,52 @@ describe("projectInfoCommand", () => {
 
     await expect(projectInfoCommand(["statuses"])).rejects.toThrow("exit");
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining("API error"));
+  });
+
+  describe("cache behavior", () => {
+    it("キャッシュが存在する場合はAPIを呼ばずキャッシュから返す", async () => {
+      vi.mocked(cacheModule.readCache).mockReturnValue({
+        cachedAt: "2026-01-01T00:00:00.000Z",
+        data: [{ id: 1, name: "Open" }],
+      });
+
+      await projectInfoCommand(["statuses"]);
+
+      expect(mockClient.getStatuses).not.toHaveBeenCalled();
+      expect(mockLog).toHaveBeenCalledWith(JSON.stringify([{ id: 1, name: "Open" }], null, 2));
+    });
+
+    it("キャッシュがない場合はAPIを呼びキャッシュに書き込む", async () => {
+      vi.mocked(cacheModule.readCache).mockReturnValue(null);
+      mockClient.getStatuses.mockResolvedValue([{ id: 1, name: "Open" }]);
+
+      await projectInfoCommand(["statuses"]);
+
+      expect(mockClient.getStatuses).toHaveBeenCalled();
+      expect(cacheModule.writeCache).toHaveBeenCalledWith("statuses", [{ id: 1, name: "Open" }]);
+    });
+
+    it("--refresh フラグはキャッシュがあっても API を再取得する", async () => {
+      vi.mocked(cacheModule.readCache).mockReturnValue({
+        cachedAt: "2026-01-01T00:00:00.000Z",
+        data: [{ id: 1, name: "Open" }],
+      });
+      mockClient.getStatuses.mockResolvedValue([{ id: 1, name: "Open" }, { id: 4, name: "Closed" }]);
+
+      await projectInfoCommand(["statuses", "--refresh"]);
+
+      expect(mockClient.getStatuses).toHaveBeenCalled();
+      expect(cacheModule.writeCache).toHaveBeenCalledWith("statuses", expect.any(Array));
+    });
+
+    it("--refresh なしでキャッシュなし: config load → API 呼び出し", async () => {
+      vi.mocked(cacheModule.readCache).mockReturnValue(null);
+      mockClient.getIssueTypes.mockResolvedValue([{ id: 1, name: "タスク" }]);
+
+      await projectInfoCommand(["issue-types"]);
+
+      expect(loader.loadConfig).toHaveBeenCalled();
+      expect(mockClient.getIssueTypes).toHaveBeenCalled();
+    });
   });
 });

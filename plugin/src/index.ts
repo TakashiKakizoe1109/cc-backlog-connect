@@ -6,6 +6,8 @@ import { issueCommand } from "./commands/issue";
 import { commentCommand } from "./commands/comment";
 import { projectInfoCommand } from "./commands/project-info";
 import { wikiCommand } from "./commands/wiki";
+import { resolveNameToId } from "./cache/metadata";
+import type { ResolvableMetadataType } from "./cache/metadata";
 
 export function parseArgs(args: string[]): { command: string; options: Record<string, string | boolean> } {
   const command = args[0] ?? "help";
@@ -41,17 +43,33 @@ COMMANDS:
     --api-key <key>     API key
     --project-key <KEY> Project key (e.g. PROJ)
     --mode <read|write> Operation mode (default: read)
+    --parallel <n>      Concurrent issues to sync at once (default: 5, max: 20)
 
   sync                Sync open issues
     --all               Sync all issues (including closed)
     --issue <KEY>       Sync a specific issue (e.g. PROJ-123)
     --force             Overwrite existing files
     --dry-run           Preview without writing files
-    --type-id <ids>     Filter by issue type (comma-separated)
-    --category-id <ids> Filter by category (comma-separated)
-    --milestone-id <ids> Filter by milestone (comma-separated)
-    --assignee-id <ids> Filter by assignee (comma-separated)
+    --status-id <ids>   Filter by status ID (comma-separated)
+    --status <names>    Filter by status name (uses cache; run project-info statuses first)
+    --type-id <ids>     Filter by issue type ID (comma-separated)
+    --type <names>      Filter by issue type name (uses cache)
+    --category-id <ids> Filter by category ID (comma-separated)
+    --category <names>  Filter by category name (uses cache)
+    --milestone-id <ids> Filter by milestone ID (comma-separated)
+    --milestone <names> Filter by milestone name (uses cache)
+    --assignee-id <ids> Filter by assignee ID (comma-separated)
+    --assignee <names>  Filter by assignee name (uses cache)
     --keyword <text>    Filter by keyword
+    --version-id <ids>  Filter by version (affected) ID (comma-separated)
+    --version <names>   Filter by version name (uses cache)
+    --priority-id <ids> Filter by priority ID (comma-separated)
+    --priority <names>  Filter by priority name (uses cache)
+    --created-user-id <ids> Filter by creator ID (comma-separated)
+    --created-user <names>  Filter by creator name (uses cache)
+    --resolution-id <ids>   Filter by resolution ID (comma-separated)
+    --resolution <names>    Filter by resolution name (uses cache)
+    --parent-child <n>  Filter by parent/child: 0=all 1=non-child 2=child-only 3=neither 4=parent-only
 
   issue <subcommand>  Manage issues
     get <KEY>           Get issue details (JSON)
@@ -68,7 +86,7 @@ COMMANDS:
     update <KEY>        Update a comment
     delete <KEY>        Delete a comment
 
-  project-info <type> Get project metadata (JSON)
+  project-info <type> Get project metadata (JSON); cached in .cc-backlog/
     statuses            Issue statuses
     issue-types         Issue types
     priorities          Priorities
@@ -76,6 +94,7 @@ COMMANDS:
     users               Project members
     categories          Categories
     versions            Versions/milestones
+    --refresh           Force re-fetch from API (bypass cache)
 
   wiki <subcommand>   Manage wiki pages
     list                List wiki pages (JSON)
@@ -101,6 +120,7 @@ async function main(): Promise<void> {
           apiKey: options["api-key"] as string | undefined,
           projectKey: options["project-key"] as string | undefined,
           mode: options.mode as string | undefined,
+          parallel: options.parallel !== undefined ? Number(options.parallel) : undefined,
         });
       } else {
         configShow();
@@ -110,16 +130,40 @@ async function main(): Promise<void> {
     case "sync": {
       const parseIds = (v: string | boolean | undefined): number[] | undefined =>
         v && typeof v === "string" ? v.split(",").map(Number) : undefined;
+
+      const resolveNameIds = (
+        nameVal: string | boolean | undefined,
+        type: ResolvableMetadataType
+      ): number[] | undefined => {
+        if (!nameVal || typeof nameVal !== "string") return undefined;
+        return nameVal.split(",").map((n) => {
+          const id = resolveNameToId(type, n.trim());
+          if (id === undefined) {
+            console.error(
+              `Error: Cannot resolve "${n.trim()}" for ${type}. Run "cc-backlog project-info ${type}" first.`
+            );
+            process.exit(1);
+          }
+          return id;
+        });
+      };
+
       await syncCommand({
         all: options.all === true,
         issue: options.issue as string | undefined,
         force: options.force === true,
         dryRun: options["dry-run"] === true,
-        typeId: parseIds(options["type-id"]),
-        categoryId: parseIds(options["category-id"]),
-        milestoneId: parseIds(options["milestone-id"]),
-        assigneeId: parseIds(options["assignee-id"]),
+        statusId: parseIds(options["status-id"]) ?? resolveNameIds(options["status"], "statuses"),
+        typeId: parseIds(options["type-id"]) ?? resolveNameIds(options["type"], "issue-types"),
+        categoryId: parseIds(options["category-id"]) ?? resolveNameIds(options["category"], "categories"),
+        milestoneId: parseIds(options["milestone-id"]) ?? resolveNameIds(options["milestone"], "versions"),
+        assigneeId: parseIds(options["assignee-id"]) ?? resolveNameIds(options["assignee"], "users"),
         keyword: options.keyword as string | undefined,
+        versionId: parseIds(options["version-id"]) ?? resolveNameIds(options["version"], "versions"),
+        priorityId: parseIds(options["priority-id"]) ?? resolveNameIds(options["priority"], "priorities"),
+        createdUserId: parseIds(options["created-user-id"]) ?? resolveNameIds(options["created-user"], "users"),
+        resolutionId: parseIds(options["resolution-id"]) ?? resolveNameIds(options["resolution"], "resolutions"),
+        parentChild: options["parent-child"] !== undefined ? Number(options["parent-child"]) : undefined,
       });
       break;
     }
@@ -153,7 +197,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error("Unexpected error:", err.message ?? err);
-  process.exit(1);
-});
+let exiting = false;
+main()
+  .then(() => { exiting = true; process.exit(0); })
+  .catch((err) => {
+    if (exiting) return; // process.exit(0) was called; suppress secondary error
+    console.error("Unexpected error:", err.message ?? err);
+    process.exit(1);
+  });

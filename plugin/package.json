@@ -1,6 +1,6 @@
 {
   "name": "cc-backlog-connect",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Backlog issue sync CLI plugin for Claude Code",
   "main": "dist/index.js",
   "bin": {

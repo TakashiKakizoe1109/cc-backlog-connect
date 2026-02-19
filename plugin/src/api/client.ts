@@ -164,6 +164,11 @@ export class BacklogApiClient {
       milestoneId?: number[];
       assigneeId?: number[];
       keyword?: string;
+      versionId?: number[];
+      priorityId?: number[];
+      createdUserId?: number[];
+      resolutionId?: number[];
+      parentChild?: number;
     } = {}
   ): Promise<BacklogIssue[]> {
     const allIssues: BacklogIssue[] = [];
@@ -179,12 +184,17 @@ export class BacklogApiClient {
       };
 
       if (opts.keyword) params.keyword = opts.keyword;
+      if (opts.parentChild !== undefined) params.parentChild = String(opts.parentChild);
       const arrayParams: [string, number[] | undefined][] = [
         ["statusId", opts.statusId],
         ["issueTypeId", opts.issueTypeId],
         ["categoryId", opts.categoryId],
         ["milestoneId", opts.milestoneId],
         ["assigneeId", opts.assigneeId],
+        ["versionId", opts.versionId],
+        ["priorityId", opts.priorityId],
+        ["createdUserId", opts.createdUserId],
+        ["resolutionId", opts.resolutionId],
       ];
       for (const [name, ids] of arrayParams) {
         if (ids) {
@@ -215,6 +225,11 @@ export class BacklogApiClient {
       milestoneId?: number[];
       count?: number;
       offset?: number;
+      versionId?: number[];
+      priorityId?: number[];
+      createdUserId?: number[];
+      resolutionId?: number[];
+      parentChild?: number;
     } = {}
   ): Promise<BacklogIssue[]> {
     const params: Record<string, string> = {
@@ -225,12 +240,17 @@ export class BacklogApiClient {
       order: "desc",
     };
     if (opts.keyword) params.keyword = opts.keyword;
+    if (opts.parentChild !== undefined) params.parentChild = String(opts.parentChild);
     const arrayParams: [string, number[] | undefined][] = [
       ["statusId", opts.statusId],
       ["assigneeId", opts.assigneeId],
       ["issueTypeId", opts.issueTypeId],
       ["categoryId", opts.categoryId],
       ["milestoneId", opts.milestoneId],
+      ["versionId", opts.versionId],
+      ["priorityId", opts.priorityId],
+      ["createdUserId", opts.createdUserId],
+      ["resolutionId", opts.resolutionId],
     ];
     for (const [name, ids] of arrayParams) {
       if (ids) {
@@ -251,18 +271,28 @@ export class BacklogApiClient {
       categoryId?: number[];
       milestoneId?: number[];
       keyword?: string;
+      versionId?: number[];
+      priorityId?: number[];
+      createdUserId?: number[];
+      resolutionId?: number[];
+      parentChild?: number;
     } = {}
   ): Promise<{ count: number }> {
     const params: Record<string, string> = {
       "projectId[]": String(projectId),
     };
     if (opts.keyword) params.keyword = opts.keyword;
+    if (opts.parentChild !== undefined) params.parentChild = String(opts.parentChild);
     const arrayParams: [string, number[] | undefined][] = [
       ["statusId", opts.statusId],
       ["assigneeId", opts.assigneeId],
       ["issueTypeId", opts.issueTypeId],
       ["categoryId", opts.categoryId],
       ["milestoneId", opts.milestoneId],
+      ["versionId", opts.versionId],
+      ["priorityId", opts.priorityId],
+      ["createdUserId", opts.createdUserId],
+      ["resolutionId", opts.resolutionId],
     ];
     for (const [name, ids] of arrayParams) {
       if (ids) {

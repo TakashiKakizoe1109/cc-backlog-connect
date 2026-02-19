@@ -115,4 +115,26 @@ describe("configSet", () => {
     expect(() => configSet({ mode: "invalid" })).toThrow("exit");
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining('"read" or "write"'));
   });
+
+  it("--parallel を設定できる", () => {
+    vi.mocked(loader.loadConfig).mockReturnValue({
+      space: "s", apiKey: "k", projectKey: "P",
+    });
+
+    configSet({ parallel: 3 });
+
+    expect(vi.mocked(loader.saveConfig)).toHaveBeenCalledWith(
+      expect.objectContaining({ parallel: 3 })
+    );
+  });
+
+  it("--parallel に不正な値（0）で終了する", () => {
+    expect(() => configSet({ parallel: 0 })).toThrow("exit");
+    expect(mockError).toHaveBeenCalledWith(expect.stringContaining("1 and 20"));
+  });
+
+  it("--parallel に不正な値（21）で終了する", () => {
+    expect(() => configSet({ parallel: 21 })).toThrow("exit");
+    expect(mockError).toHaveBeenCalledWith(expect.stringContaining("1 and 20"));
+  });
 });

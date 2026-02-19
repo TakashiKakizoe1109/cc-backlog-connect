@@ -15,14 +15,19 @@ function configShow() {
     console.log(`  apiKey:      ${(0, loader_1.maskApiKey)(config.apiKey)}`);
     console.log(`  projectKey:  ${config.projectKey}`);
     console.log(`  mode:        ${config.mode ?? "read"}`);
+    console.log(`  parallel:    ${config.parallel ?? 5}`);
 }
 function configSet(opts) {
-    if (!opts.space && !opts.apiKey && !opts.projectKey && !opts.mode) {
-        console.error("Error: At least one of --space, --api-key, --project-key, or --mode is required.");
+    if (!opts.space && !opts.apiKey && !opts.projectKey && !opts.mode && opts.parallel === undefined) {
+        console.error("Error: At least one of --space, --api-key, --project-key, --mode, or --parallel is required.");
         process.exit(1);
     }
     if (opts.mode && opts.mode !== "read" && opts.mode !== "write") {
         console.error('Error: --mode must be "read" or "write".');
+        process.exit(1);
+    }
+    if (opts.parallel !== undefined && (opts.parallel < 1 || opts.parallel > 20 || !Number.isInteger(opts.parallel))) {
+        console.error("Error: --parallel must be an integer between 1 and 20.");
         process.exit(1);
     }
     const existing = (0, loader_1.loadConfig)();
@@ -31,6 +36,7 @@ function configSet(opts) {
         apiKey: opts.apiKey ?? existing?.apiKey ?? "",
         projectKey: opts.projectKey ?? existing?.projectKey ?? "",
         mode: opts.mode ?? existing?.mode,
+        parallel: opts.parallel ?? existing?.parallel,
     };
     if (!config.space || !config.apiKey || !config.projectKey) {
         const missing = [];

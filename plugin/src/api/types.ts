@@ -102,6 +102,49 @@ export interface BacklogApiError {
   moreInfo: string;
 }
 
+export interface BacklogRateLimitCategory {
+  limit: number;
+  remaining: number;
+  reset: number; // unix timestamp (seconds)
+}
+
+export interface BacklogRateLimit {
+  read: BacklogRateLimitCategory;
+  update: BacklogRateLimitCategory;
+  search: BacklogRateLimitCategory;
+  icon: BacklogRateLimitCategory;
+}
+
+export interface BacklogDocument {
+  id: string; // string型（Wiki の wikiId: number とは異なる）
+  projectId: number;
+  title: string;
+  plain: string | null; // Markdown テキスト（削除時は null）
+  statusId: number;
+  emoji?: string;
+  attachments: BacklogAttachment[];
+  tags: BacklogTag[];
+  createdUser?: BacklogUser;
+  createdUserId?: number;
+  created: string;
+  updatedUser?: BacklogUser;
+  updatedUserId?: number;
+  updated: string;
+}
+
+export interface BacklogDocumentNode {
+  id: string;
+  name: string;
+  emoji?: string;
+  children: BacklogDocumentNode[];
+}
+
+export interface BacklogDocumentTree {
+  projectId: number;
+  activeTree: BacklogDocumentNode;
+  trashTree: BacklogDocumentNode;
+}
+
 export interface AddIssueParams {
   projectId: number;
   summary: string;

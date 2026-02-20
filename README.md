@@ -1,5 +1,7 @@
 # cc-backlog-connect - Backlog × Claude Code 連携プラグイン
 
+![cc-backlog-connect](docs/banner.png)
+
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Nulab Backlog の課題・コメント・Wiki を Claude Code から直接操作できる Claude Code CLI プラグイン。  
@@ -17,8 +19,10 @@ cc-backlog-connect は、[Nulab Backlog](https://backlog.com/) と [Claude Code]
 - **高度なフィルタリング** — 種別・カテゴリー・マイルストーン・担当者・キーワードで課題を絞り込み検索
 - **コメント管理** — 課題へのコメント追加・一覧・更新・削除を Claude Code 内で完結
 - **Wiki 操作** — Backlog Wiki ページの閲覧・作成・編集をターミナルから直接実行
+- **ドキュメント操作** — Backlog 階層型 Document（Wiki とは別機能）の一覧・ツリー表示・取得・作成・削除に対応
 - **ローカル同期** — Backlog 課題を Markdown ファイルとしてローカルに同期（フィルタ付き同期対応）
 - **Read/Write モード** — デフォルト read モードで書き込み操作を安全にガード。明示的に write モードを有効化して操作
+- **レート制限管理** — API レート制限状況の表示、プロアクティブスロットリング、正確なリトライ制御
 - **プロアクティブ Skills** — 会話中に課題キー（例: `PROJ-123`）や Wiki ページ名を言及するだけで、自動的に Backlog API から情報を取得
 - **プロジェクト単位の設定** — プロジェクトごとに異なる Backlog スペースへ接続可能
 
@@ -72,27 +76,32 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 ### スラッシュコマンド（Claude Code 内で実行）
 
 ```
-/cc-backlog-connect:config                  # Backlog API 接続設定
-/cc-backlog-connect:sync                    # 未完了の課題をローカルに同期
-/cc-backlog-connect:sync --all              # 完了済みを含む全課題を同期
-/cc-backlog-connect:sync --issue PROJ-123   # 特定の課題のみ同期
-/cc-backlog-connect:sync --type-id 10       # 種別で絞り込み同期
-/cc-backlog-connect:sync --assignee-id 100  # 担当者で絞り込み同期
-/cc-backlog-connect:sync --keyword "検索語"   # キーワードで絞り込み同期
+/cc-backlog-connect:config                     # Backlog API 接続設定の表示・変更
+/cc-backlog-connect:sync                       # 未完了の課題をローカルに同期
+/cc-backlog-connect:sync --all                 # 完了済みを含む全課題を同期
+/cc-backlog-connect:sync --issue PROJ-123      # 特定の課題のみ同期
+/cc-backlog-connect:sync --status "処理中"       # ステータス名で絞り込み同期
+/cc-backlog-connect:sync --type "タスク"         # 種別名で絞り込み同期
+/cc-backlog-connect:sync --assignee "yamada"   # 担当者名で絞り込み同期
+/cc-backlog-connect:sync --priority "高"        # 優先度名で絞り込み同期
+/cc-backlog-connect:sync --keyword "検索語"      # キーワードで絞り込み同期
+/cc-backlog-connect:sync --parent-child 1      # 親課題のみ同期（子課題除外）
 ```
 
 ### プロアクティブ Skills — 会話中の自動 Backlog 連携
 
 プロアクティブ Skills を使えば、Claude Code との会話の中で自然に Backlog の情報を取得・操作できます。課題キーや操作意図を含む発言を検知し、適切な Backlog API を自動実行します。
 
-| 発言例                            | 発動する Skill      | 実行される操作        |
-|--------------------------------|-----------------|----------------|
-| 「PROJ-123 の課題を見せて」             | backlog-issue   | 課題の詳細を取得       |
-| 「ステータスを完了にして」                  | backlog-issue   | 課題ステータスを更新     |
-| 「バグの課題を種別で検索して」                | backlog-issue   | フィルタ付き課題検索     |
-| 「PROJ-123 にコメントして」             | backlog-comment | 課題にコメントを追加     |
-| 「Backlog Wiki の設計ドキュメントを参考にして」 | backlog-wiki    | Wiki ページを取得    |
-| 「Backlog の種別一覧を見せて」            | project-info    | プロジェクトメタデータを取得 |
+| 発言例                              | 発動する Skill        | 実行される操作          |
+|----------------------------------|-----------------|----------------|
+| 「PROJ-123 の課題を見せて」               | backlog-issue   | 課題の詳細を取得         |
+| 「ステータスを完了にして」                    | backlog-issue   | 課題ステータスを更新       |
+| 「バグの課題を種別で検索して」                  | backlog-issue   | フィルタ付き課題検索       |
+| 「PROJ-123 にコメントして」               | backlog-comment | 課題にコメントを追加       |
+| 「Backlog Wiki の設計ドキュメントを参考にして」   | backlog-wiki    | Wiki ページを取得      |
+| 「Backlog ドキュメントのツリーを見せて」         | backlog-document | ドキュメント階層ツリーを表示  |
+| 「Backlog ドキュメントを追加して」            | backlog-document | ドキュメントを作成       |
+| 「Backlog の種別一覧を見せて」              | project-info    | プロジェクトメタデータを取得   |
 
 ## 同期データの出力フォーマット
 
@@ -141,7 +150,7 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 | 初回同期     | 全対象課題を取得し `docs/backlog/` に書き出し                        |
 | 2 回目以降   | 既存ファイルはスキップ（`--force` で上書き可能）                          |
 | 単一課題指定   | `--issue PROJ-123` で特定課題のみ取得                           |
-| フィルタ同期   | `--type-id`, `--category-id`, `--milestone-id`, `--assignee-id`, `--keyword` で絞り込み |
+| フィルタ同期   | 名前ベース: `--status`, `--type`, `--assignee`, `--priority`, `--category`, `--milestone`, `--version`, `--created-user`, `--resolution`, `--keyword`<br>ID ベース: `--status-id`, `--type-id`, `--assignee-id`, `--priority-id`, `--category-id`, `--milestone-id`, `--version-id`, `--created-user-id`, `--resolution-id`<br>親子関係: `--parent-child`（0=全て 1=子課題除外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
 | マークアップ変換 | Backlog 独自マークアップは変換せずそのまま保存                            |
 
 ## 対応する Backlog API
@@ -151,7 +160,8 @@ cc-backlog-connect は [Nulab Backlog API](https://developer.nulab.com/docs/back
 - 課題（Issues）: 取得 / 作成 / 更新 / 削除 / 検索 / 件数取得
 - コメント（Comments）: 一覧 / 追加 / 取得 / 更新 / 削除
 - Wiki: 一覧 / 取得 / 作成 / 更新 / 削除 / 件数取得
-- プロジェクト情報: ステータス / 種別 / 優先度 / 完了理由 / ユーザー / カテゴリ / バージョン
+- ドキュメント（Documents）: 一覧 / ツリー取得 / 取得 / 添付ファイルダウンロード / 作成 / 削除
+- プロジェクト情報: ステータス / 種別 / 優先度 / 完了理由 / ユーザー / カテゴリ / バージョン / レート制限
 
 ## Contributing
 

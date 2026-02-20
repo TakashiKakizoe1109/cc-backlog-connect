@@ -8,6 +8,20 @@ const mockConfig = {
   projectKey: "PROJ",
 };
 
+const emptyHeaders = new Headers();
+
+function mockOkJson(data: unknown) {
+  return { ok: true, headers: emptyHeaders, json: async () => data };
+}
+
+function mockOkText(data: unknown) {
+  return { ok: true, status: 200, headers: emptyHeaders, text: async () => JSON.stringify(data) };
+}
+
+function mockError(status: number, statusText: string, data: unknown) {
+  return { ok: false, status, statusText, headers: emptyHeaders, json: async () => data };
+}
+
 function makeIssueResponse(overrides: Partial<BacklogIssue> = {}): BacklogIssue {
   return {
     id: 1,
@@ -54,11 +68,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("addIssue", () => {
     it("POST /issues with correct body", async () => {
       const issueResp = makeIssueResponse({ issueKey: "PROJ-99", summary: "新規課題" });
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(issueResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.addIssue({
@@ -83,11 +93,7 @@ describe("BacklogApiClient - Write Operations", () => {
 
     it("includes optional parameters when provided", async () => {
       const issueResp = makeIssueResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(issueResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       await client.addIssue({
@@ -110,11 +116,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("updateIssue", () => {
     it("PATCH /issues/:key with status change", async () => {
       const issueResp = makeIssueResponse({ status: { id: 4, name: "完了" } });
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(issueResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.updateIssue("PROJ-1", { statusId: 4 });
@@ -128,11 +130,7 @@ describe("BacklogApiClient - Write Operations", () => {
 
     it("sends comment with update", async () => {
       const issueResp = makeIssueResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(issueResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       await client.updateIssue("PROJ-1", { statusId: 4, comment: "対応完了" });
@@ -145,11 +143,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("deleteIssue", () => {
     it("DELETE /issues/:key", async () => {
       const issueResp = makeIssueResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(issueResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.deleteIssue("PROJ-1");
@@ -164,11 +158,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("addComment", () => {
     it("POST /issues/:key/comments", async () => {
       const commentResp = makeCommentResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(commentResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(commentResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.addComment("PROJ-1", "テストコメント");
@@ -182,11 +172,7 @@ describe("BacklogApiClient - Write Operations", () => {
 
     it("includes notifiedUserId as array", async () => {
       const commentResp = makeCommentResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(commentResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(commentResp));
 
       const client = new BacklogApiClient(mockConfig);
       await client.addComment("PROJ-1", "テスト", [1, 2]);
@@ -199,11 +185,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("updateComment", () => {
     it("PATCH /issues/:key/comments/:id", async () => {
       const commentResp = makeCommentResponse({ content: "更新済み" });
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(commentResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(commentResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.updateComment("PROJ-1", 100, "更新済み");
@@ -218,11 +200,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("deleteComment", () => {
     it("DELETE /issues/:key/comments/:id", async () => {
       const commentResp = makeCommentResponse();
-      fetchSpy.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => JSON.stringify(commentResp),
-      });
+      fetchSpy.mockResolvedValueOnce(mockOkText(commentResp));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.deleteComment("PROJ-1", 100);
@@ -237,7 +215,7 @@ describe("BacklogApiClient - Write Operations", () => {
   describe("getIssues", () => {
     it("フィルタなしで課題を取得する", async () => {
       const issues = [makeIssueResponse()];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => issues });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(issues));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getIssues(10);
@@ -248,7 +226,7 @@ describe("BacklogApiClient - Write Operations", () => {
     });
 
     it("statusId フィルタ付きで課題を取得する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.getIssues(10, { statusId: [1, 2] });
@@ -258,7 +236,7 @@ describe("BacklogApiClient - Write Operations", () => {
     });
 
     it("複数フィルタを組み合わせて課題を取得する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.getIssues(10, {
@@ -286,8 +264,8 @@ describe("BacklogApiClient - Write Operations", () => {
       const page2 = [makeIssueResponse({ id: 101, issueKey: "PROJ-101" })];
 
       fetchSpy
-        .mockResolvedValueOnce({ ok: true, json: async () => page1 })
-        .mockResolvedValueOnce({ ok: true, json: async () => page2 });
+        .mockResolvedValueOnce(mockOkJson(page1))
+        .mockResolvedValueOnce(mockOkJson(page2));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getIssues(10);
@@ -299,12 +277,9 @@ describe("BacklogApiClient - Write Operations", () => {
 
   describe("error handling", () => {
     it("throws BacklogClientError on 404", async () => {
-      fetchSpy.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: "Not Found",
-        json: async () => ({ errors: [{ message: "Not found", code: 6, moreInfo: "" }] }),
-      });
+      fetchSpy.mockResolvedValueOnce(
+        mockError(404, "Not Found", { errors: [{ message: "Not found", code: 6, moreInfo: "" }] })
+      );
 
       const client = new BacklogApiClient(mockConfig);
       await expect(client.addIssue({
@@ -320,17 +295,8 @@ describe("BacklogApiClient - Write Operations", () => {
 
       const issueResp = makeIssueResponse();
       fetchSpy
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 429,
-          statusText: "Too Many Requests",
-          json: async () => ({}),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => JSON.stringify(issueResp),
-        });
+        .mockResolvedValueOnce(mockError(429, "Too Many Requests", {}))
+        .mockResolvedValueOnce(mockOkText(issueResp));
 
       const client = new BacklogApiClient(mockConfig);
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -348,6 +314,183 @@ describe("BacklogApiClient - Write Operations", () => {
       expect(result.issueKey).toBe("PROJ-1");
       expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Rate limited"));
+
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("エラーコード名をメッセージに含める [NoResourceError]", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        mockError(404, "Not Found", { errors: [{ message: "Not found", code: 6, moreInfo: "" }] })
+      );
+
+      const client = new BacklogApiClient(mockConfig);
+      await expect(client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      })).rejects.toThrow("[NoResourceError] Not found");
+    });
+
+    it("moreInfo が非空の場合はメッセージに付記する", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        mockError(400, "Bad Request", {
+          errors: [{ message: "summary は必須です", code: 7, moreInfo: "field: summary" }],
+        })
+      );
+
+      const client = new BacklogApiClient(mockConfig);
+      await expect(client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      })).rejects.toThrow("[InvalidRequestError] summary は必須です (field: summary)");
+    });
+
+    it("MAX_RETRIES を超えると BacklogClientError をスローする", async () => {
+      vi.useFakeTimers();
+
+      fetchSpy.mockResolvedValue(mockError(429, "Too Many Requests", {}));
+
+      const client = new BacklogApiClient(mockConfig);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const promise = client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      });
+
+      // unhandled rejection を防ぐため、assertion を advance 前に設定する
+      const assertion = expect(promise).rejects.toThrow("Max retries reached");
+      await vi.advanceTimersByTimeAsync(180_000);
+      await assertion;
+      expect(fetchSpy).toHaveBeenCalledTimes(4); // 初回 + リトライ3回
+
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("不正な X-RateLimit-Reset ヘッダは fallback 待機 (60s) を使う", async () => {
+      vi.useFakeTimers();
+
+      const badHeaders = new Headers();
+      badHeaders.set("X-RateLimit-Reset", "invalid-value");
+
+      const issueResp = makeIssueResponse();
+      fetchSpy
+        .mockResolvedValueOnce({ ok: false, status: 429, statusText: "Too Many Requests", headers: badHeaders, json: async () => ({}) })
+        .mockResolvedValueOnce(mockOkText(issueResp));
+
+      const client = new BacklogApiClient(mockConfig);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const promise = client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      });
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      const result = await promise;
+
+      expect(result.issueKey).toBe("PROJ-1");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("60s"));
+
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("read カテゴリ低残量は update カテゴリに影響しない", async () => {
+      vi.useFakeTimers();
+
+      const now = Date.now();
+      const resetAt = Math.floor(now / 1000) + 30;
+
+      const readHeaders = new Headers();
+      readHeaders.set("X-RateLimit-Remaining", "3");
+      readHeaders.set("X-RateLimit-Reset", String(resetAt));
+
+      const issues = [makeIssueResponse()];
+      const issueResp = makeIssueResponse();
+
+      fetchSpy
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: readHeaders, json: async () => issues })
+        .mockResolvedValueOnce(mockOkText(issueResp));
+
+      const client = new BacklogApiClient(mockConfig);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // 1回目: GET (read カテゴリ) で remaining=3 をセット
+      await client.getIssues(10);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      // 2回目: POST (update カテゴリ) は read カテゴリの低残量に影響されない
+      const promise = client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      });
+
+      await vi.advanceTimersByTimeAsync(30_000);
+      const result = await promise;
+
+      expect(result.issueKey).toBe("PROJ-1");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    it("X-RateLimit-Remaining が 5 以下になると次リクエスト前に待機する", async () => {
+      vi.useFakeTimers();
+
+      const now = Date.now();
+      const resetAt = Math.floor(now / 1000) + 30; // 30秒後
+
+      const firstHeaders = new Headers();
+      firstHeaders.set("X-RateLimit-Remaining", "5");
+      firstHeaders.set("X-RateLimit-Reset", String(resetAt));
+
+      const issue = makeIssueResponse();
+
+      fetchSpy
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: firstHeaders, text: async () => JSON.stringify(issue) })
+        .mockResolvedValueOnce(mockOkText(issue));
+
+      const client = new BacklogApiClient(mockConfig);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // 1回目: remaining=5 をセット
+      const result1 = await client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      });
+      expect(result1.issueKey).toBe("PROJ-1");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      // 2回目: waitIfThrottled で 30 秒待機してから fetch する
+      const promise2 = client.addIssue({
+        projectId: 10,
+        summary: "test",
+        issueTypeId: 1,
+        priorityId: 2,
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+      const result2 = await promise2;
+
+      expect(result2.issueKey).toBe("PROJ-1");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Rate limit low"));
 
       warnSpy.mockRestore();
       vi.useRealTimers();

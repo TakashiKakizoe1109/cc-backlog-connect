@@ -6,6 +6,7 @@ import { issueCommand } from "./commands/issue";
 import { commentCommand } from "./commands/comment";
 import { projectInfoCommand } from "./commands/project-info";
 import { wikiCommand } from "./commands/wiki";
+import { documentCommand } from "./commands/document";
 import { resolveNameToId } from "./cache/metadata";
 import type { ResolvableMetadataType } from "./cache/metadata";
 
@@ -95,6 +96,7 @@ COMMANDS:
     categories          Categories
     versions            Versions/milestones
     --refresh           Force re-fetch from API (bypass cache)
+    --rate-limit        Show current rate limit status
 
   wiki <subcommand>   Manage wiki pages
     list                List wiki pages (JSON)
@@ -103,6 +105,26 @@ COMMANDS:
     update <wikiId>     Update a wiki page
     delete <wikiId>     Delete a wiki page
     count               Count wiki pages
+
+  document <subcommand> Manage Backlog documents (hierarchical docs, distinct from Wiki)
+    list                List documents (JSON)
+      --project <key>     Project key (default: configured project)
+      --keyword <text>    Filter by keyword
+      --count <n>         Number of results
+      --offset <n>        Offset for pagination
+    get <documentId>    Get document details and content (JSON)
+    tree                Show document tree structure
+      --project <key>     Project key (default: configured project)
+    attachments <documentId> <attachmentId> --output <path>
+                        Download a document attachment
+    add                 Create a document (write mode required)
+      --project <key>     Project key (default: configured project)
+      --title <text>      Document title
+      --content <text>    Document content (Markdown)
+      --content-stdin     Read content from stdin
+      --emoji <emoji>     Document emoji
+      --parent-id <id>    Parent document ID
+    delete <documentId> Delete a document (write mode required)
 
   help                Show this help message
 `);
@@ -182,6 +204,10 @@ async function main(): Promise<void> {
 
     case "wiki":
       await wikiCommand(args.slice(1));
+      break;
+
+    case "document":
+      await documentCommand(args.slice(1));
       break;
 
     case "help":

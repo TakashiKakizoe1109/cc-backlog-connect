@@ -4,6 +4,9 @@ exports.formatIssueMd = formatIssueMd;
 function formatDate(dateStr) {
     return dateStr.slice(0, 10);
 }
+function isImageAttachment(filename) {
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
+}
 function formatIssueMd(issue, space, attachments) {
     const lines = [];
     lines.push(`# [${issue.issueKey}] ${issue.summary}`);
@@ -37,7 +40,12 @@ function formatIssueMd(issue, space, attachments) {
         lines.push("## Attachments");
         lines.push("");
         for (const att of attachments) {
-            lines.push(`- [${att.name}](attachments/${att.name})`);
+            if (isImageAttachment(att.name)) {
+                lines.push(`![${att.name}](attachments/${att.name})`);
+            }
+            else {
+                lines.push(`- [${att.name}](attachments/${att.name})`);
+            }
         }
         lines.push("");
     }

@@ -4,6 +4,10 @@ function formatDate(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
+function isImageAttachment(filename: string): boolean {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
+}
+
 export function formatIssueMd(issue: BacklogIssue, space: string, attachments?: BacklogAttachment[]): string {
   const lines: string[] = [];
 
@@ -43,7 +47,11 @@ export function formatIssueMd(issue: BacklogIssue, space: string, attachments?: 
     lines.push("## Attachments");
     lines.push("");
     for (const att of attachments) {
-      lines.push(`- [${att.name}](attachments/${att.name})`);
+      if (isImageAttachment(att.name)) {
+        lines.push(`![${att.name}](attachments/${att.name})`);
+      } else {
+        lines.push(`- [${att.name}](attachments/${att.name})`);
+      }
     }
     lines.push("");
   }

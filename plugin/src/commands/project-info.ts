@@ -8,11 +8,43 @@ type InfoType = "statuses" | "issue-types" | "priorities" | "resolutions" | "use
 const VALID_TYPES: InfoType[] = ["statuses", "issue-types", "priorities", "resolutions", "users", "categories", "versions"];
 
 export async function projectInfoCommand(args: string[]): Promise<void> {
+  const rateLimit = args.includes("--rate-limit");
+
+  if (rateLimit) {
+    const config = loadConfig();
+    if (!config) {
+      console.error('Error: No configuration found. Run "cc-backlog config set" first.');
+      process.exit(1);
+    }
+    const client = new BacklogApiClient(config);
+    try {
+      const rl = await client.getRateLimit();
+      const fmt = (cat: { remaining: number; limit: number; reset: number }): string => {
+        const resetTime = new Date(cat.reset * 1000).toLocaleTimeString();
+        const remaining = String(cat.remaining).padStart(3);
+        const limit = String(cat.limit).padStart(3);
+        return `${remaining}/${limit} remaining (reset: ${resetTime})`;
+      };
+      console.log(`Read:   ${fmt(rl.read)}`);
+      console.log(`Update: ${fmt(rl.update)}`);
+      console.log(`Search: ${fmt(rl.search)}`);
+      console.log(`Icon:   ${fmt(rl.icon)}`);
+    } catch (err) {
+      if (err instanceof BacklogClientError) {
+        console.error(`Error: ${err.message}`);
+        process.exit(2);
+      }
+      throw err;
+    }
+    return;
+  }
+
   const infoType = args[0] as InfoType | undefined;
   const refresh = args.includes("--refresh");
 
   if (!infoType || !VALID_TYPES.includes(infoType)) {
     console.error(`Usage: cc-backlog project-info <type> [--refresh]`);
+    console.error(`       cc-backlog project-info --rate-limit`);
     console.error(`Types: ${VALID_TYPES.join(", ")}`);
     process.exit(1);
   }

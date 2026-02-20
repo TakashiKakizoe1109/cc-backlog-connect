@@ -7,6 +7,12 @@ const mockConfig = {
   projectKey: "PROJ",
 };
 
+const emptyHeaders = new Headers();
+
+function mockOkJson(data: unknown) {
+  return { ok: true, headers: emptyHeaders, json: async () => data };
+}
+
 describe("BacklogApiClient - Metadata Operations", () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
@@ -25,7 +31,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
         { id: 1, name: "タスク" },
         { id: 2, name: "バグ" },
       ];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => types });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(types));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getIssueTypes("PROJ");
@@ -44,7 +50,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
         { id: 3, name: "中" },
         { id: 4, name: "低" },
       ];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => priorities });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(priorities));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getPriorities();
@@ -61,7 +67,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
         { id: 0, name: "対応済み" },
         { id: 1, name: "対応しない" },
       ];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => resolutions });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(resolutions));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getResolutions();
@@ -75,7 +81,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
   describe("getCategories", () => {
     it("GET /projects/:key/categories", async () => {
       const categories = [{ id: 1, name: "バックエンド", displayOrder: 0 }];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => categories });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(categories));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getCategories("PROJ");
@@ -99,7 +105,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
         archived: false,
         displayOrder: 0,
       }];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => versions });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(versions));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getVersions("PROJ");
@@ -117,7 +123,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
         { id: 1, name: "田中太郎", userId: "tanaka" },
         { id: 2, name: "山田花子", userId: "yamada" },
       ];
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => users });
+      fetchSpy.mockResolvedValueOnce(mockOkJson(users));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.getProjectUsers("PROJ");
@@ -131,7 +137,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
 
   describe("searchIssues", () => {
     it("includes keyword and statusId params", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, { keyword: "バグ", statusId: [1, 2] });
@@ -142,7 +148,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("issueTypeId フィルタを送信する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, { issueTypeId: [1, 2] });
@@ -152,7 +158,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("categoryId フィルタを送信する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, { categoryId: [3] });
@@ -162,7 +168,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("milestoneId フィルタを送信する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, { milestoneId: [5] });
@@ -172,7 +178,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("assigneeId フィルタを送信する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, { assigneeId: [10] });
@@ -182,7 +188,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("複数フィルタを組み合わせて送信する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => [] });
+      fetchSpy.mockResolvedValueOnce(mockOkJson([]));
 
       const client = new BacklogApiClient(mockConfig);
       await client.searchIssues(10, {
@@ -206,7 +212,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
 
   describe("countIssues", () => {
     it("GET /issues/count", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ count: 15 }) });
+      fetchSpy.mockResolvedValueOnce(mockOkJson({ count: 15 }));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.countIssues(10);
@@ -217,7 +223,7 @@ describe("BacklogApiClient - Metadata Operations", () => {
     });
 
     it("フィルタ付きで件数を取得する", async () => {
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ count: 5 }) });
+      fetchSpy.mockResolvedValueOnce(mockOkJson({ count: 5 }));
 
       const client = new BacklogApiClient(mockConfig);
       const result = await client.countIssues(10, {

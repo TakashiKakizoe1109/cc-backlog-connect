@@ -12,13 +12,34 @@ import {
   BacklogVersion,
   BacklogUser,
   BacklogWikiPage,
+  BacklogRateLimit,
+  BacklogDocument,
+  BacklogDocumentTree,
   AddIssueParams,
   UpdateIssueParams,
 } from "./types";
 
 const TIMEOUT_MS = 30_000;
 const PAGE_SIZE = 100;
-const RATE_LIMIT_WAIT_MS = 60_000;
+const MAX_RETRIES = 3;
+
+type RateLimitCategory = "read" | "update";
+
+const BACKLOG_ERROR_CODES: Record<number, string> = {
+  1: "InternalError",
+  2: "LicenceError",
+  3: "LicenceExpiredError",
+  4: "AccessDeniedError",
+  5: "UnauthorizedOperationError",
+  6: "NoResourceError",
+  7: "InvalidRequestError",
+  8: "SpaceOverCapacityError",
+  9: "ResourceOverflowError",
+  10: "TooLargeFileError",
+  11: "AuthenticationError",
+  12: "RequiredMFAError",
+  13: "TooManyRequestsError",
+};
 
 export class BacklogClientError extends Error {
   constructor(
@@ -35,6 +56,10 @@ export class BacklogApiClient {
   private baseUrl: string;
   private apiKey: string;
   public space: string;
+  private rateLimitState: Record<RateLimitCategory, { remaining: number; reset: number }> = {
+    read:   { remaining: Infinity, reset: 0 },
+    update: { remaining: Infinity, reset: 0 },
+  };
 
   constructor(config: BacklogConfig) {
     this.space = config.space;
@@ -43,17 +68,54 @@ export class BacklogApiClient {
   }
 
   private handleError(response: Response, errors?: BacklogApiError[]): never {
-    const messages: Record<number, string> = {
+    if (errors && errors.length > 0) {
+      const messages = errors.map((e) => {
+        const codeName = BACKLOG_ERROR_CODES[e.code] ?? `ErrorCode(${e.code})`;
+        const more = e.moreInfo ? ` (${e.moreInfo})` : "";
+        return `[${codeName}] ${e.message}${more}`;
+      });
+      throw new BacklogClientError(messages.join("\n"), response.status, errors);
+    }
+
+    const httpMessages: Record<number, string> = {
       401: "Authentication failed. Check your API key.",
       403: "Access denied. Check your permissions.",
       404: "Resource not found. Check your space/project settings.",
     };
-
-    const message = messages[response.status] ?? `API error: ${response.status} ${response.statusText}`;
+    const message = httpMessages[response.status] ?? `API error: ${response.status} ${response.statusText}`;
     throw new BacklogClientError(message, response.status, errors);
   }
 
-  private async request<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  private static computeRetryWaitMs(resetHeader: string | null, fallbackMs = 60_000): number {
+    if (!resetHeader) return fallbackMs;
+    const resetAt = Number(resetHeader) * 1000;
+    if (!Number.isFinite(resetAt)) return fallbackMs;
+    const wait = resetAt - Date.now();
+    return Math.max(wait, 1000);
+  }
+
+  private updateRateLimit(response: Response, category: RateLimitCategory): void {
+    const remaining = response.headers.get("X-RateLimit-Remaining");
+    const reset = response.headers.get("X-RateLimit-Reset");
+    if (remaining !== null) this.rateLimitState[category].remaining = Number(remaining);
+    if (reset !== null) this.rateLimitState[category].reset = Number(reset);
+  }
+
+  private async waitIfThrottled(category: RateLimitCategory): Promise<void> {
+    const state = this.rateLimitState[category];
+    if (state.remaining <= 5 && state.reset > 0) {
+      const wait = Math.max(state.reset * 1000 - Date.now(), 0);
+      if (wait > 0) {
+        console.warn(`Rate limit low (${state.remaining} remaining). Waiting ${Math.ceil(wait / 1000)}s...`);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        state.remaining = Infinity;
+      }
+    }
+  }
+
+  private async request<T>(path: string, params: Record<string, string> = {}, retryCount = 0): Promise<T> {
+    await this.waitIfThrottled("read");
+
     const url = new URL(`${this.baseUrl}${path}`);
     url.searchParams.set("apiKey", this.apiKey);
     for (const [key, value] of Object.entries(params)) {
@@ -69,10 +131,17 @@ export class BacklogApiClient {
       });
 
       if (response.status === 429) {
-        console.warn(`Rate limited. Waiting ${RATE_LIMIT_WAIT_MS / 1000}s before retry...`);
-        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WAIT_MS));
-        return this.request<T>(path, params);
+        if (retryCount >= MAX_RETRIES) {
+          throw new BacklogClientError("Rate limit exceeded. Max retries reached.", 429);
+        }
+        const resetHeader = response.headers.get("X-RateLimit-Reset");
+        const wait = BacklogApiClient.computeRetryWaitMs(resetHeader);
+        console.warn(`Rate limited. Waiting ${Math.ceil(wait / 1000)}s before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        return this.request<T>(path, params, retryCount + 1);
       }
+
+      this.updateRateLimit(response, "read");
 
       if (!response.ok) {
         let errors: BacklogApiError[] | undefined;
@@ -94,7 +163,10 @@ export class BacklogApiClient {
     method: "POST" | "PATCH" | "DELETE",
     path: string,
     body?: Record<string, string | number | boolean | string[] | number[]>,
+    retryCount = 0,
   ): Promise<T> {
+    await this.waitIfThrottled("update");
+
     const url = new URL(`${this.baseUrl}${path}`);
     url.searchParams.set("apiKey", this.apiKey);
 
@@ -124,10 +196,17 @@ export class BacklogApiClient {
       });
 
       if (response.status === 429) {
-        console.warn(`Rate limited. Waiting ${RATE_LIMIT_WAIT_MS / 1000}s before retry...`);
-        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WAIT_MS));
-        return this.requestWithBody<T>(method, path, body);
+        if (retryCount >= MAX_RETRIES) {
+          throw new BacklogClientError("Rate limit exceeded. Max retries reached.", 429);
+        }
+        const resetHeader = response.headers.get("X-RateLimit-Reset");
+        const wait = BacklogApiClient.computeRetryWaitMs(resetHeader);
+        console.warn(`Rate limited. Waiting ${Math.ceil(wait / 1000)}s before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        return this.requestWithBody<T>(method, path, body, retryCount + 1);
       }
+
+      this.updateRateLimit(response, "update");
 
       if (!response.ok) {
         let errors: BacklogApiError[] | undefined;
@@ -519,5 +598,113 @@ export class BacklogApiClient {
 
   async countWikiPages(projectIdOrKey: string): Promise<{ count: number }> {
     return this.request<{ count: number }>("/wikis/count", { projectIdOrKey });
+  }
+
+  // --- Rate Limit ---
+
+  async getRateLimit(): Promise<BacklogRateLimit> {
+    const response = await this.request<{ rateLimit: BacklogRateLimit }>("/rateLimit");
+    return response.rateLimit;
+  }
+
+  // --- Documents ---
+
+  async getDocuments(
+    projectId: number,
+    opts?: {
+      keyword?: string;
+      sort?: "created" | "updated";
+      order?: "asc" | "desc";
+      count?: number;
+      offset?: number;
+    }
+  ): Promise<BacklogDocument[]> {
+    const params: Record<string, string> = {
+      "projectId[]": String(projectId),
+      offset: String(opts?.offset ?? 0),
+    };
+    if (opts?.keyword) params.keyword = opts.keyword;
+    if (opts?.sort) params.sort = opts.sort;
+    if (opts?.order) params.order = opts.order;
+    if (opts?.count !== undefined) params.count = String(opts.count);
+    return this.request<BacklogDocument[]>("/documents", params);
+  }
+
+  async getDocument(documentId: string): Promise<BacklogDocument> {
+    return this.request<BacklogDocument>(`/documents/${documentId}`);
+  }
+
+  async getDocumentTree(projectIdOrKey: string): Promise<BacklogDocumentTree> {
+    return this.request<BacklogDocumentTree>("/documents/tree", { projectIdOrKey });
+  }
+
+  async downloadDocumentAttachment(documentId: string, attachmentId: number, retryCount = 0): Promise<Buffer> {
+    await this.waitIfThrottled("read");
+
+    const url = new URL(`${this.baseUrl}/documents/${documentId}/attachments/${attachmentId}`);
+    url.searchParams.set("apiKey", this.apiKey);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url.toString(), {
+        signal: controller.signal,
+      });
+
+      if (response.status === 429) {
+        if (retryCount >= MAX_RETRIES) {
+          throw new BacklogClientError("Rate limit exceeded. Max retries reached.", 429);
+        }
+        const resetHeader = response.headers.get("X-RateLimit-Reset");
+        const wait = BacklogApiClient.computeRetryWaitMs(resetHeader);
+        console.warn(`Rate limited. Waiting ${Math.ceil(wait / 1000)}s before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+        return this.downloadDocumentAttachment(documentId, attachmentId, retryCount + 1);
+      }
+
+      this.updateRateLimit(response, "read");
+
+      if (!response.ok) {
+        throw new BacklogClientError(
+          `Failed to download document attachment ${attachmentId}: ${response.status}`,
+          response.status
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } catch (error) {
+      if (error instanceof BacklogClientError) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BacklogClientError(`Failed to download document attachment ${attachmentId}: ${message}`, 0);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async addDocument(
+    projectId: number,
+    opts?: {
+      title?: string;
+      content?: string;
+      emoji?: string;
+      parentId?: string;
+      addLast?: boolean;
+    }
+  ): Promise<BacklogDocument> {
+    const body: Record<string, string | number | boolean> = { projectId };
+    if (opts?.title !== undefined) body.title = opts.title;
+    if (opts?.content !== undefined) body.content = opts.content;
+    if (opts?.emoji !== undefined) body.emoji = opts.emoji;
+    if (opts?.parentId !== undefined) body.parentId = opts.parentId;
+    if (opts?.addLast !== undefined) body.addLast = opts.addLast;
+    return this.requestWithBody<BacklogDocument>("POST", "/documents", body);
+  }
+
+  async deleteDocument(documentId: string): Promise<BacklogDocument> {
+    return this.requestWithBody<BacklogDocument>("DELETE", `/documents/${documentId}`);
   }
 }

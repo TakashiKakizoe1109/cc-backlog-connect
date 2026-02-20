@@ -18,6 +18,7 @@ const mockClient = {
   getProjectUsers: vi.fn(),
   getCategories: vi.fn(),
   getVersions: vi.fn(),
+  getRateLimit: vi.fn(),
 };
 
 let mockExit: ReturnType<typeof vi.spyOn>;
@@ -84,6 +85,50 @@ describe("projectInfoCommand", () => {
 
     await expect(projectInfoCommand(["statuses"])).rejects.toThrow("exit");
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining("API error"));
+  });
+
+  describe("--rate-limit", () => {
+    const rateLimitData = {
+      read:   { limit: 600, remaining: 595, reset: 1700000000 },
+      update: { limit: 150, remaining: 148, reset: 1700000000 },
+      search: { limit: 150, remaining: 143, reset: 1700000000 },
+      icon:   { limit: 60,  remaining: 58,  reset: 1700000000 },
+    };
+
+    it("レート制限情報を表示する", async () => {
+      mockClient.getRateLimit.mockResolvedValue(rateLimitData);
+
+      await projectInfoCommand(["--rate-limit"]);
+
+      expect(mockClient.getRateLimit).toHaveBeenCalled();
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("Read:"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("Update:"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("Search:"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("Icon:"));
+    });
+
+    it("remaining/limit の数値を含む", async () => {
+      mockClient.getRateLimit.mockResolvedValue(rateLimitData);
+
+      await projectInfoCommand(["--rate-limit"]);
+
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("595"));
+      expect(mockLog).toHaveBeenCalledWith(expect.stringContaining("600"));
+    });
+
+    it("設定未定義でエラー終了する", async () => {
+      vi.mocked(loader.loadConfig).mockReturnValue(null);
+      await expect(projectInfoCommand(["--rate-limit"])).rejects.toThrow("exit");
+    });
+
+    it("BacklogClientError をハンドリングする", async () => {
+      const err = Object.assign(new Error("API error"), { name: "BacklogClientError", statusCode: 500 });
+      Object.setPrototypeOf(err, clientModule.BacklogClientError.prototype);
+      mockClient.getRateLimit.mockRejectedValue(err);
+
+      await expect(projectInfoCommand(["--rate-limit"])).rejects.toThrow("exit");
+      expect(mockError).toHaveBeenCalledWith(expect.stringContaining("API error"));
+    });
   });
 
   describe("cache behavior", () => {

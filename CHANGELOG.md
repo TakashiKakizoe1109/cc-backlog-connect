@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] - 2026-02-20
+
+### Added
+- **Document API 対応**: `document` コマンドを新規追加（list, get, tree, attachments, add, delete サブコマンド）
+- **backlog-document スキル**: Backlog 階層型ドキュメント操作のプロアクティブ Skill（`plugin/skills/backlog-document/`）
+- **`project-info --rate-limit`**: 現在のレート制限状況（Read/Update/Search/Icon）を表示するフラグを追加
+- **`getRateLimit()` API メソッド**: `GET /api/v2/rateLimit` を呼び出す新メソッド
+
+### Improved
+- **エラーハンドリング強化**: Backlog の 13 種エラーコードを名前（`InternalError`, `NoResourceError` 等）に変換して表示; `errors[].moreInfo` も付記
+- **レート制限設計の刷新**:
+  - プロアクティブスロットリング: Remaining ≤ 5 になったら Reset タイムスタンプまで事前に待機（429 を積極回避）
+  - 429 発生時の待機を `X-RateLimit-Reset` ヘッダーの実際の値に基づいて計算（従来は固定 60 秒）
+  - 最大リトライ回数を 3 回に制限（無限ループ防止）
+
+### Types
+- `BacklogRateLimit`, `BacklogRateLimitCategory` 型を追加
+- `BacklogDocument`, `BacklogDocumentNode`, `BacklogDocumentTree` 型を追加（`documentId` は string 型）
+
+### Fixed
+- `X-RateLimit-Reset` ヘッダが数値に変換できない文字列（例: `"abc"`, 空文字）だった場合に `setTimeout(resolve, NaN)` が即時実行されるバグを修正: `Number.isFinite()` 検証を追加し、無効値は 60 秒フォールバックを使用
+- read カテゴリ（GET）のレート制限残量低下が update カテゴリ（POST/PATCH/DELETE）の呼び出しをブロックするバグを修正: レート制限状態を `"read"` / `"update"` カテゴリ別に独立管理するよう変更
+- `document add` コマンドで `--title` や `--content` / `--content-stdin` が未指定のままプロジェクト取得・API 呼び出しを実行してしまうバグを修正: `assertWriteMode` 直後に早期バリデーションを追加
+
 ## [0.3.0] - 2026-02-19
 
 ### Changed

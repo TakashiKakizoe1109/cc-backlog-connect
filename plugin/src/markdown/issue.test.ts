@@ -79,11 +79,13 @@ describe("formatIssueMd", () => {
     const attachments: BacklogAttachment[] = [
       { id: 1, name: "screenshot.png", size: 12345 },
       { id: 2, name: "design.pdf", size: 67890 },
+      { id: 3, name: "photo.JPG", size: 555 },
     ];
     const md = formatIssueMd(issue, "my-space", attachments);
 
     expect(md).toContain("## Attachments");
-    expect(md).toContain("[screenshot.png](attachments/screenshot.png)");
+    expect(md).toContain("![screenshot.png](attachments/screenshot.png)");
+    expect(md).toContain("![photo.JPG](attachments/photo.JPG)");
     expect(md).toContain("[design.pdf](attachments/design.pdf)");
   });
 

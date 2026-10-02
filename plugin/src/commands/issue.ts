@@ -1,3 +1,5 @@
+import { parseCustomFieldsJson, hasCustomFields, CustomFieldInputError } from "../api/custom-fields";
+import type { CustomFieldFilters } from "../api/types";
 import { loadConfig } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
 import { assertWriteMode } from "../config/guard";
@@ -10,6 +12,9 @@ function parseOptions(args: string[]): Record<string, string | boolean> {
     const arg = args[i];
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
+      if ((key === "custom-fields" || key === "custom-field-filters") && Object.hasOwn(options, key)) {
+        throw new CustomFieldInputError(`Duplicate --${key}; combine fields in one JSON object.`);
+      }
       const next = args[i + 1];
       if (next && !next.startsWith("--")) {
         options[key] = next;
@@ -88,6 +93,12 @@ export async function issueCommand(args: string[]): Promise<void> {
   const client = new BacklogApiClient(config);
 
   try {
+    if (args.includes("--custom-fields") && !["create", "update"].includes(subcommand)) {
+      throw new CustomFieldInputError("--custom-fields is only supported by issue create/update.");
+    }
+    if (args.includes("--custom-field-filters") && !["search", "count"].includes(subcommand)) {
+      throw new CustomFieldInputError("--custom-field-filters is only supported by issue search/count.");
+    }
     switch (subcommand) {
       case "get": {
         const issueKey = args[1];
@@ -103,6 +114,7 @@ export async function issueCommand(args: string[]): Promise<void> {
       case "create": {
         assertWriteMode(config);
         const opts = parseOptions(args.slice(1));
+        const customFields = parseCustomFieldsJson(opts["custom-fields"]);
         const summary = opts.summary as string;
         const typeId = resolveId(opts, "type", "type-id", "issue-types");
         const priorityId = resolveId(opts, "priority", "priority-id", "priorities");
@@ -116,7 +128,7 @@ export async function issueCommand(args: string[]): Promise<void> {
         // Use cached project ID if available, otherwise fetch and cache
         let projectId: number;
         const cachedProject = readCache<{ id: number }>("project");
-        if (cachedProject?.data[0]) {
+        if (!hasCustomFields(customFields) && cachedProject?.data[0]) {
           projectId = cachedProject.data[0].id;
         } else {
           const project = await client.getProject(config.projectKey);
@@ -126,6 +138,7 @@ export async function issueCommand(args: string[]): Promise<void> {
 
         const issue = await client.addIssue({
           projectId,
+          customFields,
           summary,
           issueTypeId: typeId,
           priorityId: priorityId,
@@ -151,6 +164,7 @@ export async function issueCommand(args: string[]): Promise<void> {
 
         const opts = parseOptions(args.slice(2));
         const issue = await client.updateIssue(issueKey, {
+          customFields: parseCustomFieldsJson(opts["custom-fields"]),
           summary: opts.summary as string | undefined,
           description: opts.description as string | undefined,
           statusId: resolveId(opts, "status", "status-id", "statuses"),
@@ -184,11 +198,12 @@ export async function issueCommand(args: string[]): Promise<void> {
 
       case "search": {
         const opts = parseOptions(args.slice(1));
+        const customFieldFilters = parseCustomFieldsJson<CustomFieldFilters>(opts["custom-field-filters"]);
 
         // Use cached project ID if available, otherwise fetch and cache
         let projectId: number;
         const cachedProject = readCache<{ id: number }>("project");
-        if (cachedProject?.data[0]) {
+        if (!hasCustomFields(customFieldFilters) && cachedProject?.data[0]) {
           projectId = cachedProject.data[0].id;
         } else {
           const project = await client.getProject(config.projectKey);
@@ -197,6 +212,7 @@ export async function issueCommand(args: string[]): Promise<void> {
         }
 
         const issues = await client.searchIssues(projectId, {
+          customFieldFilters,
           keyword: opts.keyword as string | undefined,
           statusId: resolveIdToArray(opts, "status", "status-id", "statuses"),
           assigneeId: resolveIdToArray(opts, "assignee", "assignee-id", "users"),
@@ -216,11 +232,12 @@ export async function issueCommand(args: string[]): Promise<void> {
 
       case "count": {
         const opts = parseOptions(args.slice(1));
+        const customFieldFilters = parseCustomFieldsJson<CustomFieldFilters>(opts["custom-field-filters"]);
 
         // Use cached project ID if available, otherwise fetch and cache
         let projectId: number;
         const cachedProject = readCache<{ id: number }>("project");
-        if (cachedProject?.data[0]) {
+        if (!hasCustomFields(customFieldFilters) && cachedProject?.data[0]) {
           projectId = cachedProject.data[0].id;
         } else {
           const project = await client.getProject(config.projectKey);
@@ -229,6 +246,7 @@ export async function issueCommand(args: string[]): Promise<void> {
         }
 
         const result = await client.countIssues(projectId, {
+          customFieldFilters,
           keyword: opts.keyword as string | undefined,
           statusId: resolveIdToArray(opts, "status", "status-id", "statuses"),
           assigneeId: resolveIdToArray(opts, "assignee", "assignee-id", "users"),
@@ -252,6 +270,10 @@ export async function issueCommand(args: string[]): Promise<void> {
         process.exit(1);
     }
   } catch (err) {
+    if (err instanceof CustomFieldInputError) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
     if (err instanceof BacklogClientError) {
       console.error(`Error: ${err.message}`);
       process.exit(2);

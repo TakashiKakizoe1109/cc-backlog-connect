@@ -90,6 +90,28 @@
 
 versions はバージョンとマイルストーンの両方を含む。
 
+### custom-fields
+
+```json
+[
+  {
+    "id": 101,
+    "projectId": 100,
+    "typeId": 6,
+    "name": "対象環境",
+    "description": "確認する環境",
+    "required": false,
+    "applicableIssueTypes": [],
+    "allowAddItem": false,
+    "items": [{ "id": 11, "name": "検証環境", "displayOrder": 0 }]
+  }
+]
+```
+
+`applicableIssueTypes: []` は全種別に適用。型は 1=テキスト、2=文章、3=数値、4=日付、5=単一リスト、6=複数リスト、7=チェックボックス、8=ラジオです。型に応じて `min` / `max`、`initialValue` / `initialDate`、`unit`、`items`、`allowInput` 等が含まれます。
+
+ID は `issue create/update --custom-fields` または `issue search/count` / `sync --custom-field-filters` に使用します。値の形式は [課題操作リファレンス](../backlog-issue/reference.md#カスタムフィールド) を参照してください。
+
 ## ID 解決の早見表
 
 | ユーザーの指定 | 取得タイプ | 検索フィールド | 使用先 |

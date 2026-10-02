@@ -126,3 +126,13 @@ Step 1 の回答後、続けて以下を聞いてください:
 | `--resolution-id <ids>` | 完了理由IDで絞り込み |
 | `--resolution <name>` | 完了理由名で絞り込み（キャッシュから解決） |
 | `--parent-child <n>` | 親子関係で絞り込み（0=全て 1=子課題以外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
+
+### カスタムフィールドのフィルタ
+
+定義を `project-info custom-fields --refresh` で確認してから、既存のフィルタと `--custom-field-filters '<JSON>'` を組み合わせられます。
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --all --custom-field-filters '{"101":"依頼元","102":{"min":0,"max":10},"103":[11,12]}'
+```
+
+ID は対象プロジェクトの値に置き換えてください。テキストはキーワード、数値・日付は `min` / `max`、選択肢は ID 配列を使います。`--issue` との併用は不可です。取得したカスタムフィールドは `issue.md` の `Custom Fields` セクションに出力されます。

@@ -114,6 +114,9 @@ npm test
 
 | テストファイル | 対象 |
 |---|---|
+| `src/api/custom-fields.test.ts` | カスタムフィールドの型・範囲・選択肢・その他入力・不正キーの検証 |
+| `src/api/client-custom-fields.test.ts` | カスタムフィールドの HTTP エンコード・対象プロジェクト・ページング・リトライ |
+| `src/commands/issue-custom-fields.test.ts` | 実コマンド → API クライアント → fetch モックの結合テスト、search/count/sync の一致 |
 | `src/api/client-write.test.ts` | POST/PATCH/DELETE、エラー処理、リトライ |
 | `src/api/client-metadata.test.ts` | メタデータ取得 API |
 | `src/api/client-wiki.test.ts` | Wiki API |
@@ -127,6 +130,8 @@ npm test
 | `src/cache/metadata.test.ts` | キャッシュ読み書き |
 | `src/config/loader.test.ts` | 設定ファイル操作 |
 | `src/index.test.ts` | CLI 引数パーサー |
+
+カスタムフィールドの結合テストはコマンド、検証、API クライアント、Markdown フォーマッタを実コードで通し、HTTP とファイル I/O だけをモックします。実際の Backlog への書き込みや本物の認証情報は使いません。新しい型やオプションを追加したら、正常系だけでなく送信されないケース（不正値・read モード・API エラー）も検証してください。
 
 fetch モックには必ず `headers: new Headers()` を含めること:
 

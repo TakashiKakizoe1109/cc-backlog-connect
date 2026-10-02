@@ -96,3 +96,22 @@ describe("formatIssueMd", () => {
     expect(md).not.toContain("Attachments");
   });
 });
+
+it("renders typed custom field values, including zero, dates, lists and Other", () => {
+  const md = formatIssueMd(makeIssue({ customFields: [
+    {id:1,fieldTypeId:1,name:"Text",value:"line1\nline2"},
+    {id:2,fieldTypeId:3,name:"Points",value:0},
+    {id:3,fieldTypeId:4,name:"Date",value:"2026-10-02T00:00:00Z"},
+    {id:4,fieldTypeId:5,name:"Single",value:{id:11,name:"Choice"}},
+    {id:5,fieldTypeId:7,name:"Multi",value:[{id:11,name:"A"},{id:12,name:"B"}],otherValue:"Other"},
+    {id:6,fieldTypeId:1,name:"Empty",value:null},
+  ] }), "s");
+  expect(md).toContain("## Custom Fields"); expect(md).toContain("**Points** (2): 0");
+  expect(md).toContain("**Date** (3): 2026-10-02"); expect(md).toContain("Choice");
+  expect(md).toContain("A, B; Other: Other"); expect(md).toContain("line1\n  line2");
+  expect(md).toContain("**Empty** (6): (Not set)");
+});
+it("omits the custom field section for missing/empty fields", () => {
+  expect(formatIssueMd(makeIssue(),"s")).not.toContain("## Custom Fields");
+  expect(formatIssueMd(makeIssue({customFields:[]}),"s")).not.toContain("## Custom Fields");
+});

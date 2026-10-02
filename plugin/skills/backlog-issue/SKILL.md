@@ -7,6 +7,7 @@ description: |
   Use when user says "Backlogの課題", "課題を作って", "PROJ-123について",
   "ステータスを変更", "担当者を変更", "課題を検索", "課題を確認", "課題の一覧",
   "同期したい", "課題を落として", "sync", "ローカルに保存", "課題を同期".
+  Supports custom field values and filters via official Backlog API (カスタム属性・カスタムフィールド).
   Supports: get, create, update, delete, search, count subcommands and sync command.
   Can resolve human-readable names (status/priority/user) to IDs via cache or project-info.
   Do NOT use for general project management unrelated to Nulab Backlog.
@@ -187,6 +188,16 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --keyword "リリース"
 ```
 
 同期先: `docs/backlog/{課題キー}/` に `issue.md`, `comments.md`, `attachments/` が生成されます。
+
+## カスタムフィールドの操作
+
+1. `project-info custom-fields --refresh` で定義を確認し、対象の ID、型、適用する課題種別、選択肢 ID を特定してください。名前が曖昧ならユーザーに確認し、ID を推測しないでください
+2. 値の作成・更新は `issue create/update --custom-fields '<JSON>'`、検索・件数取得・同期は `--custom-field-filters '<JSON>'` を使います
+3. 例: `issue update PROJ-123 --custom-fields '{"101":"依頼元","102":0}'`。JSON を一度だけ指定し、他のフィールドを消さないよう変更対象だけを含めてください
+4. 日付は `"YYYY-MM-DD"`、数値・選択肢 ID は JSON 数値、複数選択は ID 配列です。「その他」は `{"otherValue":"内容"}`（選択もするなら `value` を追加）で、`allowInput=true` の項目に限ります
+5. `null` や空配列による値の削除、定義・選択肢の管理は未対応です。詳細は [reference.md のカスタムフィールド](reference.md#カスタムフィールド) を参照してください
+
+書き込みは従来どおり write モードが必要です。定義の取得と検索・同期は read モードで利用できます。API エラーはユーザーに伝え、成功していない操作を成功扱いしないでください。
 
 ## 出力形式
 

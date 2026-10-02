@@ -270,3 +270,14 @@ describe("syncCommand", () => {
     expect(callOrder).toContain("comments");
   });
 });
+
+it("passes custom field filters through sync", async () => {
+  vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+  mockClient.getIssues.mockResolvedValue([]);
+  await syncCommand({all:true,force:false,dryRun:true,customFieldFilters:{3:{min:0}}});
+  expect(mockClient.getIssues).toHaveBeenCalledWith(10,expect.objectContaining({customFieldFilters:{3:{min:0}}}));
+});
+it("rejects custom field filters with a specific issue instead of ignoring them", async () => {
+  await expect(syncCommand({all:false,issue:"P-1",force:false,dryRun:true,customFieldFilters:{1:"x"}})).rejects.toThrow(/cannot be combined/);
+  expect(mockClient.getIssue).not.toHaveBeenCalled();
+});

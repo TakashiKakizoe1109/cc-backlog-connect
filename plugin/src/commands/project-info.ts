@@ -3,9 +3,9 @@ import { BacklogApiClient, BacklogClientError } from "../api/client";
 import { readCache, writeCache } from "../cache/metadata";
 import type { MetadataType } from "../cache/metadata";
 
-type InfoType = "statuses" | "issue-types" | "priorities" | "resolutions" | "users" | "categories" | "versions";
+type InfoType = "statuses" | "issue-types" | "priorities" | "resolutions" | "users" | "categories" | "versions" | "custom-fields";
 
-const VALID_TYPES: InfoType[] = ["statuses", "issue-types", "priorities", "resolutions", "users", "categories", "versions"];
+const VALID_TYPES: InfoType[] = ["statuses", "issue-types", "priorities", "resolutions", "users", "categories", "versions", "custom-fields"];
 
 export async function projectInfoCommand(args: string[]): Promise<void> {
   const rateLimit = args.includes("--rate-limit");
@@ -70,6 +70,9 @@ export async function projectInfoCommand(args: string[]): Promise<void> {
     let data: unknown;
 
     switch (infoType) {
+      case "custom-fields":
+        data = await client.getCustomFields(config.projectKey);
+        break;
       case "statuses":
         data = await client.getStatuses(config.projectKey);
         break;

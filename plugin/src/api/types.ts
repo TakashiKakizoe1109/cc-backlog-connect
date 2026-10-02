@@ -25,7 +25,49 @@ export interface BacklogIssueType {
   name: string;
 }
 
+export interface BacklogCustomFieldItem {
+  id: number;
+  name: string;
+  displayOrder?: number;
+}
+
+/** Project definitions use typeId; issue values use fieldTypeId. */
+export interface BacklogCustomField {
+  id: number;
+  projectId?: number;
+  typeId: number; // 1 text, 2 sentence, 3 number, 4 date, 5 single, 6 multiple, 7 checkbox, 8 radio
+  name: string;
+  description: string;
+  required: boolean;
+  applicableIssueTypes: number[];
+  min?: number | string | null;
+  max?: number | string | null;
+  initialValue?: number | null;
+  initialDate?: { id: number; shift?: number; date?: string } | null;
+  unit?: string | null;
+  items?: BacklogCustomFieldItem[];
+  allowInput?: boolean;
+  allowAddItem?: boolean;
+}
+
+export interface BacklogIssueCustomField {
+  id: number;
+  fieldTypeId: number;
+  name: string;
+  value: string | number | BacklogCustomFieldItem | BacklogCustomFieldItem[] | null;
+  otherValue?: string | null;
+}
+
+export type CustomFieldValues = Record<string,
+  string | number | number[] | { value?: number | number[]; otherValue: string }
+>;
+export type CustomFieldFilters = Record<string,
+  string | number[] | { min?: number | string; max?: number | string }
+>;
+
 export interface BacklogIssue {
+  projectId?: number;
+  customFields?: BacklogIssueCustomField[];
   id: number;
   issueKey: string;
   summary: string;
@@ -146,6 +188,7 @@ export interface BacklogDocumentTree {
 }
 
 export interface AddIssueParams {
+  customFields?: CustomFieldValues;
   projectId: number;
   summary: string;
   issueTypeId: number;
@@ -162,6 +205,7 @@ export interface AddIssueParams {
 }
 
 export interface UpdateIssueParams {
+  customFields?: CustomFieldValues;
   summary?: string;
   description?: string;
   statusId?: number;

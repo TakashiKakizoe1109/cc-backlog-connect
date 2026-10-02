@@ -1,5 +1,8 @@
+import { hasCustomFields, serializeCustomFields, serializeCustomFieldFilters, CustomFieldInputError } from "./custom-fields";
 import { BacklogConfig } from "../config/types";
 import {
+  BacklogCustomField,
+  CustomFieldFilters,
   BacklogProject,
   BacklogIssue,
   BacklogComment,
@@ -248,13 +251,16 @@ export class BacklogApiClient {
       createdUserId?: number[];
       resolutionId?: number[];
       parentChild?: number;
+      customFieldFilters?: CustomFieldFilters;
     } = {}
   ): Promise<BacklogIssue[]> {
+    const customParams = await this.customFieldFilterParams(projectId, opts.customFieldFilters);
     const allIssues: BacklogIssue[] = [];
     let offset = 0;
 
     while (true) {
       const params: Record<string, string> = {
+        ...customParams,
         "projectId[]": String(projectId),
         count: String(PAGE_SIZE),
         offset: String(offset),
@@ -309,9 +315,11 @@ export class BacklogApiClient {
       createdUserId?: number[];
       resolutionId?: number[];
       parentChild?: number;
+      customFieldFilters?: CustomFieldFilters;
     } = {}
   ): Promise<BacklogIssue[]> {
     const params: Record<string, string> = {
+      ...await this.customFieldFilterParams(projectId, opts.customFieldFilters),
       "projectId[]": String(projectId),
       count: String(opts.count ?? PAGE_SIZE),
       offset: String(opts.offset ?? 0),
@@ -355,9 +363,11 @@ export class BacklogApiClient {
       createdUserId?: number[];
       resolutionId?: number[];
       parentChild?: number;
+      customFieldFilters?: CustomFieldFilters;
     } = {}
   ): Promise<{ count: number }> {
     const params: Record<string, string> = {
+      ...await this.customFieldFilterParams(projectId, opts.customFieldFilters),
       "projectId[]": String(projectId),
     };
     if (opts.keyword) params.keyword = opts.keyword;
@@ -403,6 +413,10 @@ export class BacklogApiClient {
     if (params.estimatedHours !== undefined) body.estimatedHours = params.estimatedHours;
     if (params.actualHours !== undefined) body.actualHours = params.actualHours;
     if (params.parentIssueId !== undefined) body.parentIssueId = params.parentIssueId;
+    if (hasCustomFields(params.customFields)) {
+      const definitions = await this.getCustomFields(params.projectId);
+      Object.assign(body, serializeCustomFields(params.customFields!, definitions, params.issueTypeId));
+    }
     return this.requestWithBody<BacklogIssue>("POST", "/issues", body);
   }
 
@@ -422,6 +436,14 @@ export class BacklogApiClient {
     if (params.actualHours !== undefined) body.actualHours = params.actualHours;
     if (params.resolutionId !== undefined) body.resolutionId = params.resolutionId;
     if (params.comment !== undefined) body.comment = params.comment;
+    if (hasCustomFields(params.customFields)) {
+      const current = await this.getIssue(issueKey);
+      if (!Number.isSafeInteger(current.projectId) || current.projectId! <= 0) {
+        throw new CustomFieldInputError("Cannot determine the target issue project for custom field validation.");
+      }
+      const definitions = await this.getCustomFields(current.projectId!);
+      Object.assign(body, serializeCustomFields(params.customFields!, definitions, params.issueTypeId ?? current.issueType.id));
+    }
     return this.requestWithBody<BacklogIssue>("PATCH", `/issues/${issueKey}`, body);
   }
 
@@ -524,7 +546,16 @@ export class BacklogApiClient {
     }
   }
 
+  private async customFieldFilterParams(projectId: number, filters?: CustomFieldFilters): Promise<Record<string, string>> {
+    if (!hasCustomFields(filters)) return {};
+    return serializeCustomFieldFilters(filters!, await this.getCustomFields(projectId));
+  }
+
   // --- Project Metadata ---
+
+  async getCustomFields(projectIdOrKey: string | number): Promise<BacklogCustomField[]> {
+    return this.request<BacklogCustomField[]>(`/projects/${encodeURIComponent(String(projectIdOrKey))}/customFields`);
+  }
 
   async getStatuses(projectKey: string): Promise<{ id: number; name: string }[]> {
     return this.request<{ id: number; name: string }[]>(

@@ -1,4 +1,4 @@
-import { BacklogIssue, BacklogAttachment } from "../api/types";
+import { BacklogIssue, BacklogAttachment, BacklogIssueCustomField } from "../api/types";
 
 function formatDate(dateStr: string): string {
   return dateStr.slice(0, 10);
@@ -6,6 +6,18 @@ function formatDate(dateStr: string): string {
 
 function isImageAttachment(filename: string): boolean {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
+}
+
+function customFieldValue(field: BacklogIssueCustomField): string {
+  const value = field.value;
+  let text: string;
+  if (value == null || value === "" || (Array.isArray(value) && value.length === 0)) text = "";
+  else if (Array.isArray(value)) text = value.map(item => item.name).join(", ");
+  else if (typeof value === "object") text = value.name;
+  else if (field.fieldTypeId === 4 && typeof value === "string") text = formatDate(value);
+  else text = String(value);
+  if (field.otherValue) text = [text, `Other: ${field.otherValue}`].filter(Boolean).join("; ");
+  return (text || "(Not set)").replace(/\r?\n/g, "\n  ");
 }
 
 export function formatIssueMd(issue: BacklogIssue, space: string, attachments?: BacklogAttachment[]): string {
@@ -38,6 +50,15 @@ export function formatIssueMd(issue: BacklogIssue, space: string, attachments?: 
   }
 
   lines.push("");
+  if (issue.customFields?.length) {
+    lines.push("## Custom Fields");
+    lines.push("");
+    for (const field of issue.customFields) {
+      const name = field.name.replace(/[\r\n]/g, " ").replace(/([\\*_[\]])/g, "\\$1");
+      lines.push(`- **${name}** (${field.id}): ${customFieldValue(field)}`);
+    }
+    lines.push("");
+  }
   lines.push("## Description");
   lines.push("");
   lines.push(issue.description ?? "(No description)");

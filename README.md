@@ -17,6 +17,7 @@ cc-backlog-connect は、[Nulab Backlog](https://backlog.com/) と [Claude Code]
 
 - **課題の CRUD 操作** — Backlog 課題の取得・作成・更新・削除・検索をコマンドラインから実行
 - **高度なフィルタリング** — 種別・カテゴリー・マイルストーン・担当者・キーワードで課題を絞り込み検索
+- **カスタムフィールド** — 定義一覧の取得、課題の値の読み書き、型に合わせた検索・件数取得・同期に対応
 - **コメント管理** — 課題へのコメント追加・一覧・更新・削除を Claude Code 内で完結
 - **Wiki 操作** — Backlog Wiki ページの閲覧・作成・編集をターミナルから直接実行
 - **ドキュメント操作** — Backlog 階層型 Document（Wiki とは別機能）の一覧・ツリー表示・取得・作成・削除に対応
@@ -103,6 +104,32 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 | 「Backlog ドキュメントを追加して」            | backlog-document | ドキュメントを作成       |
 | 「Backlog の種別一覧を見せて」              | project-info    | プロジェクトメタデータを取得   |
 
+### カスタムフィールド（カスタム属性）
+
+Backlog API のカスタム属性を既存の課題コマンドで扱えます。まず定義一覧からフィールド ID、型、選択肢 ID、必須設定、適用する課題種別を確認してください。
+
+```bash
+# 定義一覧（read モードで実行可能）
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info custom-fields --refresh
+
+# 課題を作成: 101 はテキスト、102 は数値、103 は複数選択の例
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue create \
+  --summary "調査依頼" --type-id 1 --priority-id 3 \
+  --custom-fields '{"101":"顧客からの依頼","102":0,"103":[11,12]}'
+
+# 値を更新（write モードが必要）
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue update PROJ-123 \
+  --custom-fields '{"102":5}'
+
+# 数値の範囲と選択肢で検索。count / sync でも同じ JSON を使用可能
+node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search \
+  --custom-field-filters '{"102":{"min":0,"max":10},"103":[11,12]}'
+```
+
+例の ID は実際のプロジェクトの ID に置き換えてください。JSON は ID をキーにしたオブジェクトを一度だけ指定します。日付は `"YYYY-MM-DD"`、選択肢は表示名ではなく数値 ID です。課題取得の JSON と同期した `issue.md` にはカスタムフィールドの値も含まれます。
+
+書き込み・検索時は対象プロジェクトの定義を取得し、型、選択肢、適用種別、範囲を検証します。指定しないフィールドは送信しません。`null` や空配列による値の削除、定義自体の作成・変更・削除には対応していません。詳細と「その他」入力の形式は [カスタムフィールドのリファレンス](plugin/skills/backlog-issue/reference.md#カスタムフィールド) を参照してください。
+
 ## 同期データの出力フォーマット
 
 `cc-backlog sync` で同期された課題は、プロジェクトルート配下に Markdown ファイルとして出力されます。Claude Code はこれらのファイルを自動的にコンテキストとして参照できます。
@@ -161,7 +188,7 @@ cc-backlog-connect は [Nulab Backlog API](https://developer.nulab.com/docs/back
 - コメント（Comments）: 一覧 / 追加 / 取得 / 更新 / 削除
 - Wiki: 一覧 / 取得 / 作成 / 更新 / 削除 / 件数取得
 - ドキュメント（Documents）: 一覧 / ツリー取得 / 取得 / 添付ファイルダウンロード / 作成 / 削除
-- プロジェクト情報: ステータス / 種別 / 優先度 / 完了理由 / ユーザー / カテゴリ / バージョン / レート制限
+- プロジェクト情報: ステータス / 種別 / 優先度 / 完了理由 / ユーザー / カテゴリ / バージョン / カスタムフィールド定義 / レート制限
 
 ## Contributing
 

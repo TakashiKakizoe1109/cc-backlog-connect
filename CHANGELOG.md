@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- `project-info custom-fields [--refresh]` でカスタムフィールド定義を取得・キャッシュ
+- `issue create/update --custom-fields <JSON>` で全 8 型の値と利用可能な「その他」入力を送信
+- `issue search/count` と `sync` の `--custom-field-filters <JSON>` でテキスト・数値/日付範囲・選択肢を検索
+- 課題の JSON 型定義と同期 Markdown にカスタムフィールドを追加
+- 対象プロジェクトの最新定義による型・範囲・選択肢・適用種別の検証と、既存操作の回帰テスト
+
 ## [0.4.0] - 2026-02-20
 
 ### Added

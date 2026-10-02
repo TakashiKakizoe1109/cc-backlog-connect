@@ -369,3 +369,58 @@ describe("issueCommand", () => {
     expect(mockError).toHaveBeenCalledWith(expect.stringContaining("Not found"));
   });
 });
+
+describe("custom field CLI options", () => {
+  it("passes JSON custom fields to create and update", async () => {
+    vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+    mockClient.addIssue.mockResolvedValue({issueKey:"P-1",summary:"x"});
+    mockClient.updateIssue.mockResolvedValue({issueKey:"P-1",summary:"x"});
+    await issueCommand(["create","--summary","x","--type-id","1","--priority-id","3","--custom-fields",'{"1":"hello","3":0}']);
+    expect(mockClient.addIssue).toHaveBeenCalledWith(expect.objectContaining({customFields:{1:"hello",3:0}}));
+    await issueCommand(["update","P-1","--custom-fields",'{"1":""}']);
+    expect(mockClient.updateIssue).toHaveBeenCalledWith("P-1",expect.objectContaining({customFields:{1:""}}));
+  });
+  it.each(["search","count"])("passes custom field filters to %s", async action => {
+    vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+    mockClient.searchIssues.mockResolvedValue([]); mockClient.countIssues.mockResolvedValue({count:0});
+    await issueCommand([action,"--custom-field-filters",'{"3":{"min":0}}']);
+    const method = action === "search" ? mockClient.searchIssues : mockClient.countIssues;
+    expect(method).toHaveBeenCalledWith(10,expect.objectContaining({customFieldFilters:{3:{min:0}}}));
+  });
+  it("fails on malformed or duplicate custom field input without writing", async () => {
+    vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+    for (const args of [["--custom-fields"], ["--custom-fields","{"], ["--custom-fields","{}","--custom-fields","{}"]]) {
+      await expect(issueCommand(["update","P-1",...args])).rejects.toThrow();
+    }
+    expect(mockClient.updateIssue).not.toHaveBeenCalled();
+  });
+  it("keeps custom field writes behind read-mode guard", async () => {
+    vi.mocked(loader.loadConfig).mockReturnValue(readConfig);
+    await expect(issueCommand(["update","P-1","--custom-fields",'{"1":"x"}'])).rejects.toThrow();
+    expect(mockClient.updateIssue).not.toHaveBeenCalled();
+  });
+});
+
+it.each([
+  ["search", "--custom-fields", "{}"],
+  ["update", "P-1", "--custom-field-filters", "{}"],
+])("rejects custom-field flags in the wrong command", async (...args) => {
+  vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+  await expect(issueCommand(args)).rejects.toThrow();
+  expect(mockClient.updateIssue).not.toHaveBeenCalled();
+  expect(mockClient.searchIssues).not.toHaveBeenCalled();
+});
+
+it("resolves the configured project afresh for custom-field create/search/count", async () => {
+  vi.mocked(loader.loadConfig).mockReturnValue(writeConfig);
+  vi.mocked(cacheModule.readCache).mockReturnValue({cachedAt:"old",data:[{id:999}]});
+  mockClient.addIssue.mockResolvedValue({issueKey:"P-1",summary:"x"});
+  mockClient.searchIssues.mockResolvedValue([]); mockClient.countIssues.mockResolvedValue({count:0});
+  await issueCommand(["create","--summary","x","--type-id","1","--priority-id","3","--custom-fields",'{"1":"x"}']);
+  await issueCommand(["search","--custom-field-filters",'{"1":"x"}']);
+  await issueCommand(["count","--custom-field-filters",'{"1":"x"}']);
+  expect(mockClient.addIssue).toHaveBeenCalledWith(expect.objectContaining({projectId:10}));
+  expect(mockClient.searchIssues).toHaveBeenCalledWith(10,expect.anything());
+  expect(mockClient.countIssues).toHaveBeenCalledWith(10,expect.anything());
+  expect(mockClient.getProject).toHaveBeenCalledTimes(3);
+});

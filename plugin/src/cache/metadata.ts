@@ -10,9 +10,10 @@ export type MetadataType =
   | "users"
   | "categories"
   | "versions"
-  | "project";
+  | "project"
+  | "custom-fields";
 
-export type ResolvableMetadataType = Exclude<MetadataType, "project">;
+export type ResolvableMetadataType = Exclude<MetadataType, "project" | "custom-fields">;
 
 export interface CachedMetadata<T = unknown> {
   cachedAt: string;

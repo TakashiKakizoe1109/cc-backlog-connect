@@ -2,11 +2,11 @@
 name: project-info
 description: |
   Backlogプロジェクトメタデータ参照のプロアクティブSkill。
-  ステータス・種別・優先度・完了理由・メンバー・カテゴリ・バージョンの一覧取得に対応。
+  ステータス・種別・優先度・完了理由・メンバー・カテゴリ・バージョン・カスタムフィールド定義の一覧取得に対応。
   Use when user asks about Backlog project settings, issue types, statuses, priorities,
-  members, categories, or versions.
+  members, categories, versions, or custom fields.
   Use when user says "Backlogの種別一覧", "担当者は誰がいる？", "ステータス一覧",
-  "優先度の種類", "カテゴリ一覧", "バージョン一覧", "マイルストーン", "完了理由".
+  "優先度の種類", "カテゴリ一覧", "バージョン一覧", "マイルストーン", "完了理由", "カスタムフィールド", "カスタム属性".
   Also used internally by backlog-issue skill to resolve human-readable names to IDs.
   Do NOT use for general project management questions unrelated to Backlog metadata.
 ---
@@ -43,6 +43,9 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info <type> --refresh
 | `users` | プロジェクトメンバー一覧 | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info users` |
 | `categories` | カテゴリ一覧 | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info categories` |
 | `versions` | バージョン/マイルストーン一覧 | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info versions` |
+| `custom-fields` | カスタムフィールド定義・型・必須設定・適用種別・選択肢 ID | `node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info custom-fields` |
+
+カスタムフィールドを変更する前には `--refresh` で最新定義を確認してください。課題の値は `issue create/update --custom-fields` で扱います。定義自体の変更や選択肢の追加は行いません。同名の項目がある場合、ID を推測して選ばないでください。
 
 ## キャッシュ動作
 

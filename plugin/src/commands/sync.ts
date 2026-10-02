@@ -1,8 +1,9 @@
+import { CustomFieldInputError, hasCustomFields } from "../api/custom-fields";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadConfig, findProjectRoot } from "../config/loader";
 import { BacklogApiClient, BacklogClientError } from "../api/client";
-import { BacklogIssue } from "../api/types";
+import { BacklogIssue, CustomFieldFilters } from "../api/types";
 import { formatIssueMd } from "../markdown/issue";
 import { formatCommentsMd } from "../markdown/comments";
 import { writeCache } from "../cache/metadata";
@@ -23,6 +24,7 @@ interface SyncOptions {
   createdUserId?: number[];
   resolutionId?: number[];
   parentChild?: number;
+  customFieldFilters?: CustomFieldFilters;
 }
 
 function docsDir(): string {
@@ -96,6 +98,9 @@ async function syncIssue(
 }
 
 export async function syncCommand(opts: SyncOptions): Promise<void> {
+  if (opts.issue && hasCustomFields(opts.customFieldFilters)) {
+    throw new CustomFieldInputError("--custom-field-filters cannot be combined with sync --issue.");
+  }
   const config = loadConfig();
   if (!config) {
     console.error("Error: No configuration found.");
@@ -162,6 +167,7 @@ export async function syncCommand(opts: SyncOptions): Promise<void> {
         createdUserId: opts.createdUserId,
         resolutionId: opts.resolutionId,
         parentChild: opts.parentChild,
+        customFieldFilters: opts.customFieldFilters,
       });
       console.log(`Found ${issues.length} issue(s).`);
       console.log("");

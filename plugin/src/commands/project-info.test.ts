@@ -11,6 +11,7 @@ vi.mock("../cache/metadata");
 const config = { space: "s", apiKey: "k", projectKey: "P" };
 
 const mockClient = {
+  getCustomFields: vi.fn(),
   getStatuses: vi.fn(),
   getIssueTypes: vi.fn(),
   getPriorities: vi.fn(),
@@ -58,6 +59,7 @@ describe("projectInfoCommand", () => {
   });
 
   const types = [
+    ["custom-fields", "getCustomFields", [{ id: 1, name: "Field", typeId: 1 }]],
     ["statuses", "getStatuses", [{ id: 1, name: "Open" }]],
     ["issue-types", "getIssueTypes", [{ id: 1, name: "タスク" }]],
     ["priorities", "getPriorities", [{ id: 2, name: "中" }]],
@@ -177,4 +179,12 @@ describe("projectInfoCommand", () => {
       expect(mockClient.getIssueTypes).toHaveBeenCalled();
     });
   });
+});
+
+it("refreshes custom field definitions instead of using cache", async () => {
+  vi.mocked(cacheModule.readCache).mockReturnValue({cachedAt:"old",data:[{id:99}]});
+  mockClient.getCustomFields.mockResolvedValue([{id:1,name:"Fresh",typeId:1}]);
+  await projectInfoCommand(["custom-fields","--refresh"]);
+  expect(mockClient.getCustomFields).toHaveBeenCalledWith("P");
+  expect(cacheModule.writeCache).toHaveBeenCalledWith("custom-fields",[{id:1,name:"Fresh",typeId:1}]);
 });

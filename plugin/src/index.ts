@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { parseCustomFieldsJson, CustomFieldInputError } from "./api/custom-fields";
+import type { CustomFieldFilters } from "./api/types";
 import { configShow, configSet } from "./commands/config";
 import { syncCommand } from "./commands/sync";
 import { issueCommand } from "./commands/issue";
@@ -18,6 +20,9 @@ export function parseArgs(args: string[]): { command: string; options: Record<st
     const arg = args[i];
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
+      if ((key === "custom-fields" || key === "custom-field-filters") && Object.hasOwn(options, key)) {
+        throw new CustomFieldInputError(`Duplicate --${key}; combine fields in one JSON object.`);
+      }
       const next = args[i + 1];
       if (next && !next.startsWith("--")) {
         options[key] = next;
@@ -61,6 +66,7 @@ COMMANDS:
     --milestone <names> Filter by milestone name (uses cache)
     --assignee-id <ids> Filter by assignee ID (comma-separated)
     --assignee <names>  Filter by assignee name (uses cache)
+    --custom-field-filters <JSON> Filter custom fields by ID
     --keyword <text>    Filter by keyword
     --version-id <ids>  Filter by version (affected) ID (comma-separated)
     --version <names>   Filter by version name (uses cache)
@@ -79,6 +85,8 @@ COMMANDS:
     delete <KEY>        Delete an issue
     search              Search issues
     count               Count issues
+    --custom-fields <JSON>        Field ID to value map (create/update)
+    --custom-field-filters <JSON> Field ID to keyword, range or list IDs (search/count)
 
   comment <subcommand> Manage issue comments
     list <KEY>          List comments (JSON)
@@ -95,6 +103,7 @@ COMMANDS:
     users               Project members
     categories          Categories
     versions            Versions/milestones
+    custom-fields       Custom field definitions, types, required flags and list item IDs
     --refresh           Force re-fetch from API (bypass cache)
     --rate-limit        Show current rate limit status
 
@@ -171,6 +180,7 @@ async function main(): Promise<void> {
       };
 
       await syncCommand({
+        customFieldFilters: parseCustomFieldsJson<CustomFieldFilters>(options["custom-field-filters"]),
         all: options.all === true,
         issue: options.issue as string | undefined,
         force: options.force === true,

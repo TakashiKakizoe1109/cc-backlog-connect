@@ -40,3 +40,11 @@ describe("parseArgs", () => {
     expect(result.options.space).toBe("my-space");
   });
 });
+
+it("preserves JSON custom-field filters as a single sync option", () => {
+  const json = '{"101":"日本語 &=","102":{"min":0},"103":[11,12]}';
+  expect(parseArgs(["sync","--all","--custom-field-filters",json]).options).toEqual({all:true,"custom-field-filters":json});
+});
+it.each(["custom-fields","custom-field-filters"])("rejects duplicate --%s instead of silently replacing input", flag => {
+  expect(() => parseArgs(["sync",`--${flag}`,"{}",`--${flag}`,"{}"])).toThrow(/Duplicate/);
+});

@@ -40,6 +40,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue create [options]
 | `--due-date`        | no  | string | 期限（YYYY-MM-DD）                         |
 | `--estimated-hours` | no  | number | 予定時間                                   |
 | `--actual-hours`    | no  | number | 実績時間                                   |
+| `--custom-fields` | no | JSON object | カスタムフィールド ID と値の対応（形式は後述） |
 
 *: `--type-id` か `--type` のどちらか一方が必須。`--priority-id` か `--priority` のどちらか一方が必須。
 
@@ -67,6 +68,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue update <ISSUE-KEY> [options]
 | `--estimated-hours` | number | 予定時間                                   |
 | `--actual-hours`    | number | 実績時間                                   |
 | `--comment`         | string | 更新時コメント                                |
+| `--custom-fields` | JSON object | 変更するカスタムフィールド ID と値の対応 |
 
 ### issue delete
 
@@ -102,6 +104,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search [options]
 | `--resolution-id`     | string | 完了理由ID（カンマ区切りで複数指定可）                     |
 | `--resolution`        | string | 完了理由名（キャッシュから解決、単一指定）                    |
 | `--parent-child`      | number | 親子関係（0=全て 1=子課題以外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
+| `--custom-field-filters` | JSON object | ID ごとのテキスト・数値/日付範囲・選択肢フィルタ |
 
 ### issue count
 
@@ -145,6 +148,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync [options]
 | `--resolution-id`     | string | 完了理由IDで絞り込み                              |
 | `--resolution`        | string | 完了理由名で絞り込み（キャッシュから解決）                    |
 | `--parent-child`      | number | 親子関係（0=全て 1=子課題以外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
+| `--custom-field-filters` | JSON object | ID ごとのテキスト・数値/日付範囲・選択肢フィルタ |
 
 sync 実行後、`.cc-backlog/` に `project.json` および（`--all` 以外の場合）`statuses.json` が自動更新されます。
 
@@ -260,7 +264,11 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" sync --all --custom-field-filters '{"
   "updated": "2025-02-01T14:30:00Z",
   "dueDate": "2025-03-01T00:00:00Z",
   "estimatedHours": 8,
-  "actualHours": 3
+  "actualHours": 3,
+  "customFields": [
+    { "id": 101, "fieldTypeId": 1, "name": "依頼元", "value": "顧客" },
+    { "id": 102, "fieldTypeId": 3, "name": "ポイント", "value": 0 }
+  ]
 }
 ```
 

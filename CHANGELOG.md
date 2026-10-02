@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-02
+
 ### Added
 
 - `project-info custom-fields [--refresh]` でカスタムフィールド定義を取得・キャッシュ
@@ -13,6 +15,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `issue search/count` と `sync` の `--custom-field-filters <JSON>` でテキスト・数値/日付範囲・選択肢を検索
 - 課題の JSON 型定義と同期 Markdown にカスタムフィールドを追加
 - 対象プロジェクトの最新定義による型・範囲・選択肢・適用種別の検証と、既存操作の回帰テスト
+- package/lock/plugin/marketplace と CHANGELOG、公開オプション表・JSON 例の整合性ゲートと、不整合を検出する負例テスト
+
+### Fixed
+
+- バージョン変更・初回インストール時に、ソースと既存ビルド出力の更新時刻が同じでも必ず再ビルド
+- インストール/ビルドが失敗した場合は完了マーカーを残さず、次回起動時に再試行（コンパイラが不完全な出力を生成した場合も対象）
+- README の read/write モードと起動方法、課題リファレンスのオプション表・JSON 例を修正
+
+### Upgrade notes
+
+- 既存の `issue.md` は通常の同期ではスキップされます。カスタムフィールドを反映するには対象を確認して `sync --issue PROJ-123 --force`、または必要なフィルタ付きの `sync --force` を実行してください。ローカルで編集した同期ファイルは上書きされるため、必要な変更を先に退避してください
+- 初回利用/更新後は SessionStart フックまたは `bash "${CLAUDE_PLUGIN_ROOT}/scripts/smart-install.sh"` でビルドしてください。`node dist/index.js` はビルド後に実行します
 
 ## [0.4.0] - 2026-02-20
 

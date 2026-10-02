@@ -5,6 +5,9 @@
 | Version | Supported          |
 |---------|--------------------|
 | 0.1.x   | :white_check_mark: |
+| 0.2.x–0.5.x | Not yet specified |
+
+The existing 0.1.x support commitment is unchanged. This policy has not yet specified support for later version lines; preparing or publishing a version does not by itself change that support policy.
 
 ## Reporting a Vulnerability
 

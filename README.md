@@ -4,7 +4,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Nulab Backlog の課題・コメント・Wiki を Claude Code から直接操作できる Claude Code CLI プラグイン。  
+Nulab Backlog の課題・カスタムフィールド・コメント・Wiki・ドキュメントを Claude Code から直接操作できる Claude Code CLI プラグイン。  
 Backlog API を介して課題の参照・作成・更新・同期を行い、AI コーディングアシスタントにプロジェクト管理のコンテキストを与えます。
 
 ## cc-backlog-connect とは
@@ -50,7 +50,7 @@ cc-backlog-connect を導入すると:
 登録後、Claude Code 内でスラッシュコマンドとプロアクティブ Skills が使用可能になります。
 
 依存関係のインストールとビルドは SessionStart フックで自動実行されます（`smart-install.sh`）。  
-加えて、`cc-backlog` 実行時にも同チェックを行うため、SessionStart が未実行でも初回利用時に自己復旧します。  
+SessionStart が未実行の場合は `bash "${CLAUDE_PLUGIN_ROOT}/scripts/smart-install.sh"` を実行してください。`scripts/cc-backlog.sh` から起動する場合にも同じ確認を行います。`node dist/index.js` や npm の `cc-backlog` はビルド済みファイルを直接実行します。  
 バージョン変更やソース更新時のみ再実行されるため、セッション起動への影響は最小限です。
 
 ### 2. Backlog API 接続設定
@@ -68,7 +68,7 @@ set --space <スペース名> --api-key <APIキー> --project-key <プロジェ�
 | `project-key` | 対象プロジェクトキー                      | `PROJ`                                              |
 | `mode`        | 操作モード（デフォルト: `read`）            | `read`（読み取りのみ） / `write`（書き込み許可）                     |
 
-> **安全ガード**: デフォルトは `read` モードです。課題の作成・更新・削除、コメントの追加、Wiki の編集、同期を行うには `write` モードを有効にしてください。
+> **安全ガード**: デフォルトは `read` モードです。課題の作成・更新・削除、コメントの追加、Wiki・ドキュメントの書き込みには `write` モードを有効にしてください。課題取得・検索・メタデータ参照・ローカル同期は `read` モードで利用できます。
 
 設定は `{プロジェクトルート}/.cc-backlog/config.json` に保存されます。API キーを含むため、`.gitignore` に追加してください。
 
@@ -126,6 +126,8 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search \
   --custom-field-filters '{"102":{"min":0,"max":10},"103":[11,12]}'
 ```
 
+すでに同期した課題へカスタムフィールドを反映する場合は、`sync --issue PROJ-123 --force` など対象を絞って再同期してください。`--force` はローカルの同期ファイルを上書きするため、手元の編集は先に退避してください。
+
 例の ID は実際のプロジェクトの ID に置き換えてください。JSON は ID をキーにしたオブジェクトを一度だけ指定します。日付は `"YYYY-MM-DD"`、選択肢は表示名ではなく数値 ID です。課題取得の JSON と同期した `issue.md` にはカスタムフィールドの値も含まれます。
 
 書き込み・検索時は対象プロジェクトの定義を取得し、型、選択肢、適用種別、範囲を検証します。指定しないフィールドは送信しません。`null` や空配列による値の削除、定義自体の作成・変更・削除には対応していません。詳細と「その他」入力の形式は [カスタムフィールドのリファレンス](plugin/skills/backlog-issue/reference.md#カスタムフィールド) を参照してください。
@@ -177,7 +179,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" issue search \
 | 初回同期     | 全対象課題を取得し `docs/backlog/` に書き出し                        |
 | 2 回目以降   | 既存ファイルはスキップ（`--force` で上書き可能）                          |
 | 単一課題指定   | `--issue PROJ-123` で特定課題のみ取得                           |
-| フィルタ同期   | 名前ベース: `--status`, `--type`, `--assignee`, `--priority`, `--category`, `--milestone`, `--version`, `--created-user`, `--resolution`, `--keyword`<br>ID ベース: `--status-id`, `--type-id`, `--assignee-id`, `--priority-id`, `--category-id`, `--milestone-id`, `--version-id`, `--created-user-id`, `--resolution-id`<br>親子関係: `--parent-child`（0=全て 1=子課題除外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
+| フィルタ同期   | 名前ベース: `--status`, `--type`, `--assignee`, `--priority`, `--category`, `--milestone`, `--version`, `--created-user`, `--resolution`, `--keyword`<br>ID ベース: `--status-id`, `--type-id`, `--assignee-id`, `--priority-id`, `--category-id`, `--milestone-id`, `--version-id`, `--created-user-id`, `--resolution-id`<br>カスタムフィールド: `--custom-field-filters`（JSON）<br>親子関係: `--parent-child`（0=全て 1=子課題除外 2=子課題のみ 3=どちらでもない 4=親課題のみ） |
 | マークアップ変換 | Backlog 独自マークアップは変換せずそのまま保存                            |
 
 ## 対応する Backlog API

@@ -67,7 +67,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/index.js" project-info statuses --refresh
 ## 他のSkillからの利用
 
 このコマンドは、backlog-issue スキルや backlog-comment スキルからID解決のために内部的に利用されます。
-v0.3.0 以降は名前ベースフラグ（`--status "完了"` 等）を使えばこのコマンドの明示的な呼び出しは不要です。
+v0.3.0 以降、通常のメタデータはキャッシュがあれば名前ベースフラグ（`--status "完了"` 等）で解決できます。カスタムフィールドは ID 指定のため、定義から ID と型を確認してください。
 
 例: ユーザーが「ステータスを完了にして」と言った場合
 1. キャッシュがある場合: `issue update PROJ-123 --status "完了"` を直接実行（API 往復なし）

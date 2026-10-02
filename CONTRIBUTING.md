@@ -5,7 +5,8 @@ Thank you for your interest in contributing!
 ## Tech Stack
 
 - TypeScript (ES2022 / CommonJS)
-- Node.js 18+ (外部依存なし、fetch/fs/path すべて組み込み)
+- CLI 実行: Node.js 18+（fetch/fs/path は組み込み）
+- 開発・ビルド・テスト: Node.js 20.19+ または 22.12+（固定された Vite 開発依存の要件。CI は Node.js 20）
 - dev 依存: `typescript`, `@types/node`, `vitest`
 
 ## Development Setup
@@ -68,7 +69,7 @@ cc-backlog-connect/
     │   └── markdown/
     │       ├── issue.ts          # 課題 → issue.md フォーマッタ
     │       └── comments.ts       # コメント → comments.md フォーマッタ
-    ├── dist/                     # ビルド出力（gitignore）
+    ├── dist/                     # ビルド出力（既存の追跡済みファイルは更新しない）
     ├── commands/                  # Claude Code スラッシュコマンド
     │   ├── config.md             # /cc-backlog-connect:config スラッシュコマンド
     │   └── sync.md               # /cc-backlog-connect:sync スラッシュコマンド
@@ -114,6 +115,8 @@ npm test
 
 | テストファイル | 対象 |
 |---|---|
+| `src/release-metadata.test.ts` | package/lock/plugin/marketplace/changelog のバージョン整合性 |
+| `src/scripts/smart-install.test.ts` | 初回/更新時ビルド、同一更新時刻、失敗後の再試行（npm/npx は偽コマンド） |
 | `src/api/custom-fields.test.ts` | カスタムフィールドの型・範囲・選択肢・その他入力・不正キーの検証 |
 | `src/api/client-custom-fields.test.ts` | カスタムフィールドの HTTP エンコード・対象プロジェクト・ページング・リトライ |
 | `src/commands/issue-custom-fields.test.ts` | 実コマンド → API クライアント → fetch モックの結合テスト、search/count/sync の一致 |
@@ -155,3 +158,12 @@ fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => data });
 ## Security
 
 If you discover a security vulnerability, please **do not** open a public issue. See [SECURITY.md](SECURITY.md) for reporting instructions.
+
+
+## Release preparation checks
+
+`npm test` includes a release-preparation gate in `src/release-metadata.test.ts`. It checks all five project-version values across package/lock/plugin/marketplace metadata, the latest dated CHANGELOG entry, public option tables and JSON examples. Negative fixtures prove that independently stale versions, missing changelog entries, missing public options and malformed examples are rejected. This runs in the existing CI test step; no separate workflow or paid service is needed.
+
+A passing preparation gate does not create or verify a Git tag or GitHub Release. Report the verified main commit and its CI result separately from publication status. Tag/release/npm publication and deployment require their own explicit decision; do not move existing tags. Review `SECURITY.md` separately because a version bump does not establish a support policy.
+
+Generated output is rebuilt by the SessionStart installer or an explicit build. Legacy tracked `plugin/dist/` files remain in this repository; do not update or expand that generated output in a source change. Installer regressions cover first installation, upgrades with equal source/output timestamps, unchanged reruns, and failures that emit partial output before failing.

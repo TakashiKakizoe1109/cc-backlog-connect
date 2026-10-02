@@ -21,17 +21,25 @@ need_build() {
   return 1
 }
 
+install_needed=false
 if need_install; then
-  echo "[cc-backlog-connect] Installing dependencies..." >&2
-  cd "$PLUGIN_DIR"
-  npm install --ignore-scripts 2>&1 | tail -1 >&2
-  echo "$CURRENT_VERSION" > "$MARKER_FILE"
+  install_needed=true
 fi
 
-if need_build; then
-  echo "[cc-backlog-connect] Building TypeScript..." >&2
+# Installation/version changes must rebuild even when a checkout preserves equal
+# source/output timestamps. A marker represents a successful install AND build.
+if "$install_needed" || need_build; then
+  rm -f "$MARKER_FILE"
   cd "$PLUGIN_DIR"
+
+  if "$install_needed"; then
+    echo "[cc-backlog-connect] Installing dependencies..." >&2
+    npm install --ignore-scripts 2>&1 | tail -1 >&2
+  fi
+
+  echo "[cc-backlog-connect] Building TypeScript..." >&2
   npx tsc 2>&1 | tail -5 >&2
   chmod +x "$PLUGIN_DIR/dist/index.js" 2>/dev/null || true
+  printf '%s\n' "$CURRENT_VERSION" > "$MARKER_FILE"
   echo "[cc-backlog-connect] Build complete." >&2
 fi
